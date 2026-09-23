@@ -1,0 +1,26 @@
+# src/main/resources/application.yml
+
+spring:
+  application:
+    name: BillManager
+  datasource:
+    url: jdbc:mysql://localhost:3306/bill_manager?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: zhr..1314
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  devtools:
+    restart:
+      enabled: true
+      additional-paths:
+        - src/main/java/com/example/billmanager
+      exclude: static/**
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+logging:
+  level:
+    root: INFO
+    com.example.billmanager: DEBUG
