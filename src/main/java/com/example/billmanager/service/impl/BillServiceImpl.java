@@ -4,7 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
+import com.example.billmanager.dto.bill.BillCreatedDTO;
 import com.example.billmanager.dto.bill.BillQueryDTO;
+import com.example.billmanager.dto.bill.BillUpdateDTO;
 import com.example.billmanager.entity.Bill;
 import com.example.billmanager.entity.Category;
 import com.example.billmanager.mapper.BillMapper;
@@ -35,8 +37,19 @@ import java.util.Objects;
 @Service
 public class BillServiceImpl extends ServiceImpl<BillMapper, Bill> implements BillService {
 
+    /**
+     * 分类数据访问层。
+     * <p>
+     *     用于查询账单关联的分类信息（分类名称组装、新增账单时的分类校验）。
+     * </p>
+     */
     private final CategoryMapper categoryMapper;
 
+    /**
+     * 构造方法注入分类数据访问层。
+     *
+     * @param categoryMapper 分类数据访问层
+     */
     public BillServiceImpl(CategoryMapper categoryMapper) {
         this.categoryMapper = categoryMapper;
     }
@@ -117,6 +130,15 @@ public class BillServiceImpl extends ServiceImpl<BillMapper, Bill> implements Bi
         return resultPage;
     }
 
+    /**
+     * 根据分类ID列表批量查询分类信息。
+     * <p>
+     *     使用 IN 查询一次性获取当前页账单涉及的所有分类，
+     *     避免在循环中逐条查询数据库（N+1 查询问题）。
+     * </p>
+     * @param categoryIds 分类ID列表（已去重、去 null）
+     * @return 分类ID -> 分类实体 的映射；入参为空时返回空 Map
+     */
     private Map<Long, Category> getCategoryMap(List<Long> categoryIds) {
         if (categoryIds.isEmpty()) {
             return new HashMap<>();
@@ -138,6 +160,17 @@ public class BillServiceImpl extends ServiceImpl<BillMapper, Bill> implements Bi
         return categoryMap;
     }
 
+    /**
+     * 将账单实体转换为分页展示对象。
+     * <p>
+     *     复制账单基础字段，并根据分类ID从分类映射中
+     *     取出分类名称一并组装到 VO 中；
+     *     分类不存在时分类名称保持为 null，不影响账单数据返回。
+     * </p>
+     * @param bill        账单实体
+     * @param categoryMap 分类ID -> 分类实体 的映射
+     * @return 账单分页展示对象
+     */
     private BillPageVO convertToPageVO(Bill bill, Map<Long, Category> categoryMap) {
         BillPageVO vo = new BillPageVO();
 
@@ -159,5 +192,126 @@ public class BillServiceImpl extends ServiceImpl<BillMapper, Bill> implements Bi
         return vo;
     }
 
+
+    /**
+     * 新增账单。
+     * <p>
+     *     新增前根据分类ID查询分类信息，并进行业务校验：
+     *     <ol>
+     *         <li>分类必须存在，否则抛出 404 业务异常；</li>
+     *         <li>分类必须处于启用状态（status=1），已禁用分类不允许记账；</li>
+     *         <li>分类类型必须与账单类型一致（如收入账单只能选择收入分类），
+     *             防止出现"收入账单挂支出分类"的脏数据。</li>
+     *     </ol>
+     * </p>
+     * <p>
+     *     提前在业务层校验分类，可以避免无效数据直接落库时
+     *     触发数据库外键约束异常（表现为 500 系统错误），
+     *     转而返回语义明确的业务错误提示。
+     * </p>
+     * <p>
+     *     账单ID由 MyBatis-Plus 雪花算法自动生成（{@code IdType.ASSIGN_ID}），
+     *     创建时间、修改时间由 {@code MyMetaObjectHandler} 自动填充，
+     *     无需在此手动设置。
+     * </p>
+     * @param billCreatedDTO 账单新增请求参数（基础参数校验已在控制层完成）
+     * @return 新增成功后的账单信息（包含系统生成的账单ID、创建时间等）
+     * @throws BusinessException 当分类不存在、分类已禁用或分类类型与账单类型不匹配时抛出
+     */
+    @Override
+    public Bill createBill(BillCreatedDTO billCreatedDTO) {
+
+        // 查询账单所选分类，校验分类的合法性
+        Category category = categoryMapper.selectById(billCreatedDTO.getCategoryId());
+
+        if (category == null) {
+            throw new BusinessException(404, "所选分类不存在");
+        }
+
+        if (!Objects.equals(category.getStatus(), 1)) {
+            throw new BusinessException(400, "所选分类已禁用，请重新选择");
+        }
+
+        if (!Objects.equals(category.getCategoryType(), billCreatedDTO.getBillType())) {
+            throw new BusinessException(400, "分类类型与账单类型不匹配");
+        }
+
+        // 将 DTO 中的字段复制到账单实体
+        Bill bill = new Bill();
+
+        bill.setBillAmount(billCreatedDTO.getBillAmount());
+        bill.setBillType(billCreatedDTO.getBillType());
+        bill.setCategoryId(billCreatedDTO.getCategoryId());
+        bill.setRemark(billCreatedDTO.getRemark());
+        bill.setBillDate(billCreatedDTO.getBillDate());
+
+        // 插入数据库，插入成功后实体会回填自动生成的账单ID及填充的时间字段
+        baseMapper.insert(bill);
+
+        return bill;
+    }
+
+    /**
+     * 根据账单ID修改账单。
+     * <p>
+     *     修改前先根据账单ID查询账单，账单不存在时直接抛出 404 业务异常，
+     *     避免对不存在的账单执行无意义的分类校验和更新操作。
+     * </p>
+     * <p>
+     *     然后对账单新选择的分类进行业务校验（与新增账单的校验规则一致）：
+     *     <ol>
+     *         <li>分类必须存在，否则抛出 404 业务异常；</li>
+     *         <li>分类必须处于启用状态（status=1），已禁用分类不允许记账；</li>
+     *         <li>分类类型必须与账单类型一致（如收入账单只能选择收入分类），
+     *             防止出现"收入账单挂支出分类"的脏数据。</li>
+     *     </ol>
+     * </p>
+     * <p>
+     *     校验通过后将 DTO 中的字段覆盖到原账单实体并执行更新，
+     *     修改时间（updateTime）由 {@code MyMetaObjectHandler} 在更新时自动填充，
+     *     无需在此手动设置。
+     * </p>
+     * @param billId        账单ID
+     * @param billUpdateDTO 账单修改请求参数（基础参数校验已在控制层完成）
+     * @return 修改成功后的账单信息
+     * @throws BusinessException 当账单不存在、分类不存在、分类已禁用或分类类型与账单类型不匹配时抛出
+     */
+    @Override
+    public Bill updateBillById(Long billId, BillUpdateDTO billUpdateDTO) {
+
+        // 先查询待修改的账单，账单不存在时直接返回 404，不再执行后续校验
+        Bill bill = baseMapper.selectById(billId);
+
+        if (bill == null) {
+            throw new BusinessException(404, "账单不存在");
+        }
+
+        // 查询账单新选择的分类，校验分类的合法性
+        Category category = categoryMapper.selectById(billUpdateDTO.getCategoryId());
+
+        if (category == null) {
+            throw new BusinessException(404, "所选分类不存在");
+        }
+
+        if (!Objects.equals(category.getStatus(), 1)) {
+            throw new BusinessException(400, "所选分类已禁用，请重新选择");
+        }
+
+        if (!Objects.equals(category.getCategoryType(), billUpdateDTO.getBillType())) {
+            throw new BusinessException(400, "分类类型与账单类型不匹配，请重新选择");
+        }
+
+        // 将 DTO 中的字段覆盖到原账单实体
+        bill.setBillAmount(billUpdateDTO.getBillAmount());
+        bill.setBillType(billUpdateDTO.getBillType());
+        bill.setRemark(billUpdateDTO.getRemark());
+        bill.setCategoryId(billUpdateDTO.getCategoryId());
+        bill.setBillDate(billUpdateDTO.getBillDate());
+
+        // 更新数据库，修改时间由 MyMetaObjectHandler 自动填充
+        baseMapper.updateById(bill);
+
+        return bill;
+    }
 
 }

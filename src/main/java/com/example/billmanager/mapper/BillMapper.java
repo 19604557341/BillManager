@@ -1,14 +1,7 @@
 package com.example.billmanager.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.example.billmanager.dto.bill.BillQueryDTO;
 import com.example.billmanager.entity.Bill;
-import com.example.billmanager.vo.BillPageVO;
-import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Select;
-
-import java.util.List;
 
 /**
  * 账单数据访问层。

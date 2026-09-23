@@ -20,9 +20,18 @@ import java.util.Map;
  * </p>
  *
  * <p>
- * 当前主要处理请求参数校验异常。
- * 后续可以继续扩展业务异常、数据库异常等。
+ * 当前处理的异常类型：
+ * <ul>
+ *     <li>请求体参数校验异常（{@code MethodArgumentNotValidException}）；</li>
+ *     <li>请求参数约束校验异常（{@code ConstraintViolationException}）；</li>
+ *     <li>方法级参数校验异常（{@code HandlerMethodValidationException}）；</li>
+ *     <li>业务异常（{@code BusinessException}）。</li>
+ * </ul>
+ * 后续可以继续扩展数据库异常、系统未知异常等。
  * </p>
+ *
+ * @author 白麝花生
+ * @since 2026-09-14
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {

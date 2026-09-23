@@ -2,13 +2,11 @@ package com.example.billmanager.service;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.spring.service.IService;
+import com.example.billmanager.dto.bill.BillCreatedDTO;
 import com.example.billmanager.dto.bill.BillQueryDTO;
+import com.example.billmanager.dto.bill.BillUpdateDTO;
 import com.example.billmanager.entity.Bill;
 import com.example.billmanager.vo.BillPageVO;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotNull;
 
 /**
  * 账单业务接口。
@@ -21,7 +19,19 @@ import jakarta.validation.constraints.NotNull;
  */
 public interface BillService extends IService<Bill> {
 
+    /**
+     * 根据账单ID查询账单详情。
+     *
+     * <p>
+     * 账单不存在时抛出业务异常，
+     * 由全局异常处理器统一转换为错误响应。
+     * </p>
+     *
+     * @param billId 账单ID
+     * @return 账单详情
+     */
     Bill getBillById(Long billId);
+
     /**
      * 分页查询账单列表。
      *
@@ -30,9 +40,37 @@ public interface BillService extends IService<Bill> {
      * 避免一次性加载全部账单数据。
      * </p>
      *
-     * @param page 页码，从1开始
-     * @param size 每页数据量
+     * @param billQueryDTO 账单分页查询条件（页码、每页数量、账单类型、分类、日期范围）
      * @return 账单分页结果
      */
-    IPage<BillPageVO> getBillPage(@Valid BillQueryDTO billQueryDTO);
+    IPage<BillPageVO> getBillPage(BillQueryDTO billQueryDTO);
+
+    /**
+     * 新增账单。
+     *
+     * <p>
+     * 新增前校验分类是否存在、是否启用，
+     * 以及分类类型与账单类型是否匹配；
+     * 校验通过后将账单数据写入数据库。
+     * </p>
+     *
+     * @param billCreatedDTO 账单新增请求参数（参数基础校验已在控制层完成）
+     * @return 新增成功后的账单信息（包含系统生成的账单ID、创建时间等）
+     */
+    Bill createBill(BillCreatedDTO billCreatedDTO);
+
+    /**
+     * 根据账单ID修改账单。
+     *
+     * <p>
+     * 修改前校验账单是否存在，以及新选择的分类是否存在、是否启用、
+     * 分类类型与账单类型是否匹配；
+     * 校验通过后将账单数据更新到数据库。
+     * </p>
+     *
+     * @param billId        账单ID
+     * @param billUpdateDTO 账单修改请求参数（参数基础校验已在控制层完成）
+     * @return 修改成功后的账单信息
+     */
+    Bill updateBillById(Long billId, BillUpdateDTO billUpdateDTO);
 }

@@ -15,7 +15,13 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * 分类业务实现类
+ * 分类业务实现类。
+ *
+ * <p>
+ * 负责处理账单分类相关的业务逻辑。
+ * 基础的数据库操作由 MyBatis-Plus 提供，
+ * 具体业务规则（重名检查、逻辑删除等）在本类中进行统一处理。
+ * </p>
  *
  * @author 白麝花生
  * @since 2026-09-13
@@ -24,14 +30,15 @@ import java.util.Objects;
 public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> implements CategoryService {
 
     /**
-     * 查询分类列表
+     * 查询分类列表。
      *
      * <p>
      * 只查询启用状态的分类；
      * 如果传入分类类型，则按照分类类型进行过滤；
      * 最后按照分类类型、排序字段升序排列。
+     * </p>
      *
-     * @param categoryType 分类类型，可选值：INCOME、EXPENSE
+     * @param categoryType 分类类型，可选值：INCOME、EXPENSE；为空时查询全部类型
      * @return 分类列表
      */
     @Override
