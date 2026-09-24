@@ -37,7 +37,7 @@
 - **规避 N+1 查询**：分页查询先取当前页账单，再提取分类 ID **批量**查询并组装 Map，而非逐条查询分类名。
 - **并发竞态兜底**：删除账单时检查受影响行数，行数为 0（已被并发删除）同样返回 404，不制造「删除成功」的假象。
 - **枚举治理**：`BillType`、`CategoryStatus`、`ErrorCode` 三个枚举收敛了散落的字符串与数字魔法值；通过 `@EnumValue` + `@JsonValue` 保证数据库存储值与 JSON 报文格式在改造前后完全不变。
-- **密码外置**：数据库密码不再硬编码，改为 `${DB_PASSWORD}` 占位符 + 本地 `.env` / 系统环境变量注入。
+- **凭据外置与最小权限**：数据库密码不再硬编码，改为 `${DB_USERNAME}` / `${DB_PASSWORD}` 占位符 + 本地 `.env` / 系统环境变量注入；应用默认使用仅具备 `bill_manager` 库 DML 权限的专用账户，不再以 `root` 直连。
 
 ---
 
@@ -221,9 +221,9 @@ GET /api/bills/page?page=1&size=10&billType=EXPENSE&startDate=2026-09-01&endDate
 mysql -u root -p < src/main/resources/Sql.sql
 ```
 
-### 2. 配置数据库密码
+### 2. 配置数据库账户
 
-密码不入库，通过项目根目录的 `.env` 文件提供。复制模板后填入真实值：
+数据库凭据不入库，通过项目根目录的 `.env` 文件提供。复制模板后填入真实值：
 
 ```bash
 # Windows
@@ -233,18 +233,27 @@ copy .env.example .env
 cp .env.example .env
 ```
 
-编辑 `.env`：
+建议为本项目建立**权限受限的专用账户**，而非使用 `root` 直连。用 root 登录 MySQL 执行：
+
+```sql
+CREATE USER 'billmanager'@'localhost' IDENTIFIED BY '你的强随机密码';
+GRANT SELECT, INSERT, UPDATE, DELETE ON bill_manager.* TO 'billmanager'@'localhost';
+```
+
+应用只需要 DML 权限，无需 DDL 与管理权限。然后编辑 `.env`：
 
 ```properties
-DB_PASSWORD=你的数据库密码
+DB_USERNAME=billmanager
+DB_PASSWORD=你的强随机密码
 ```
 
 `.env` 已被 `.gitignore` 排除，不会被提交。
 
-> 生产 / CI 环境无需 `.env`，直接设置系统环境变量 `DB_PASSWORD` 即可 —— 其优先级高于 `.env` 文件。
-> 若两处都未提供，应用启动时会因占位符无法解析而快速失败，不会静默使用空密码。
+> 生产 / CI 环境无需 `.env`，直接设置同名系统环境变量即可 —— 其优先级**高于** `.env` 文件。
+> 若 `DB_PASSWORD` 两处都未提供，应用启动时会因占位符无法解析而快速失败，不会静默使用空密码。
+> `DB_USERNAME` 未提供时默认为 `billmanager`。
 
-数据库连接地址与用户名如需修改，编辑 [`src/main/resources/application.yml`](src/main/resources/application.yml) 的 `spring.datasource` 配置。
+数据库连接地址如需修改，编辑 [`src/main/resources/application.yml`](src/main/resources/application.yml) 的 `spring.datasource.url`。
 
 ### 3. 启动应用
 

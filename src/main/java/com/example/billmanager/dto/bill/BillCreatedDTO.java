@@ -1,6 +1,5 @@
 package com.example.billmanager.dto.bill;
 
-import com.example.billmanager.enums.BillType;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
