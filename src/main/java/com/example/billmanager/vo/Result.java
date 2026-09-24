@@ -31,6 +31,14 @@ import lombok.NoArgsConstructor;
 public class Result<T> {
 
     /**
+     * 成功状态码。
+     * <p>
+     * 统一收敛成功响应的状态码，避免在各处直接书写数字 200。
+     * </p>
+     */
+    private static final Integer SUCCESS_CODE = 200;
+
+    /**
      * 业务状态码。
      * <p>
      * 200 表示成功，其余状态码表示对应的业务或系统错误。
@@ -62,10 +70,10 @@ public class Result<T> {
      * @param <T>     业务数据类型
      * @return 状态码为 200 的成功响应结果
      */
-    public static <T> Result<T> success(String message, T data){
+    public static <T> Result<T> success(String message, T data) {
         Result<T> result = new Result<>();
 
-        result.setCode(200);
+        result.setCode(SUCCESS_CODE);
         result.setMessage(message);
         result.setData(data);
 
@@ -81,7 +89,7 @@ public class Result<T> {
      * @param <T>     业务数据类型
      * @return 携带指定状态码与提示信息的错误响应结果
      */
-    public static <T> Result<T> error(Integer code, String message, T data){
+    public static <T> Result<T> error(Integer code, String message, T data) {
         Result<T> result = new Result<>();
 
         result.setCode(code);

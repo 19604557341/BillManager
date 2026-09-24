@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.example.billmanager.dto.category.CategoryCreateDTO;
 import com.example.billmanager.dto.category.CategoryUpdateDTO;
 import com.example.billmanager.entity.Category;
+import com.example.billmanager.enums.CategoryStatus;
+import com.example.billmanager.enums.ErrorCode;
 import com.example.billmanager.exception.BusinessException;
 import com.example.billmanager.mapper.CategoryMapper;
 import com.example.billmanager.service.CategoryService;
@@ -46,8 +48,10 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
 
         LambdaQueryWrapper<Category> queryWrapper = new LambdaQueryWrapper<>();
 
-        queryWrapper.eq(Category::getStatus, 1);
+        // 只查询启用状态的分类
+        queryWrapper.eq(Category::getStatus, CategoryStatus.ENABLED.getCode());
 
+        // 分类类型为可选过滤条件，未传入时查询全部类型
         if (StringUtils.hasLength(categoryType)) {
             queryWrapper.eq(Category::getCategoryType, categoryType);
         }
@@ -80,6 +84,7 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
     @Override
     public Category createCategory(CategoryCreateDTO categoryCreateDTO) {
 
+        // 查询相同类型下是否已存在同名分类（含已禁用的分类，唯一索引不区分状态）
         LambdaQueryWrapper<Category> queryWrapper = new LambdaQueryWrapper<>();
 
         queryWrapper
@@ -89,29 +94,30 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
         Category existCategory = baseMapper.selectOne(queryWrapper);
 
         if (existCategory != null) {
-            if (Objects.equals(existCategory.getStatus(), 1)) {
-                throw new BusinessException(409, "该分类已存在");
+            // 同名同类型分类已处于启用状态，属于重复创建
+            if (Objects.equals(existCategory.getStatus(), CategoryStatus.ENABLED.getCode())) {
+                throw new BusinessException(ErrorCode.CONFLICT, "该分类已存在");
             }
 
+            // 同名同类型分类处于禁用状态，恢复启用并更新排序值
             existCategory.setSort(categoryCreateDTO.getSort());
-            existCategory.setStatus(1);
+            existCategory.setStatus(CategoryStatus.ENABLED.getCode());
 
             baseMapper.updateById(existCategory);
 
             return existCategory;
         }
 
+        // 不存在同名分类，直接新增，默认状态为启用
         Category category = new Category();
 
         category.setCategoryName(categoryCreateDTO.getCategoryName());
-
         category.setCategoryType(categoryCreateDTO.getCategoryType());
-
         category.setSort(categoryCreateDTO.getSort());
-
-        category.setStatus(1);
+        category.setStatus(CategoryStatus.ENABLED.getCode());
 
         baseMapper.insert(category);
+
         return category;
     }
 
@@ -131,25 +137,28 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
     @Override
     public Category updateCategory(Long categoryId, CategoryUpdateDTO categoryUpdateDTO) {
 
+        // 先查询待修改的分类，分类不存在时直接抛出 404
         Category category = baseMapper.selectById(categoryId);
 
         if (category == null) {
-            throw new BusinessException(404, "分类不存在");
+            throw new BusinessException(ErrorCode.NOT_FOUND, "分类不存在");
         }
 
+        // 检查修改后的名称与类型是否与其他分类重复（排除自身）
         LambdaQueryWrapper<Category> queryWrapper = new LambdaQueryWrapper<>();
 
         queryWrapper
                 .eq(Category::getCategoryName, categoryUpdateDTO.getCategoryName())
                 .eq(Category::getCategoryType, categoryUpdateDTO.getCategoryType())
-                .ne(Category::getCategoryId,categoryId);
+                .ne(Category::getCategoryId, categoryId);
 
         Category existCategory = baseMapper.selectOne(queryWrapper);
 
         if (existCategory != null) {
-            throw new BusinessException(409, "该分类已存在");
+            throw new BusinessException(ErrorCode.CONFLICT, "该分类已存在");
         }
 
+        // 将 DTO 中的字段覆盖到原分类实体并执行更新
         category.setCategoryName(categoryUpdateDTO.getCategoryName());
         category.setCategoryType(categoryUpdateDTO.getCategoryType());
         category.setSort(categoryUpdateDTO.getSort());
@@ -175,22 +184,25 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
      */
     @Override
     public void deleteCategory(Long categoryId) {
+
+        // 只允许删除当前处于启用状态的分类，不存在或已禁用时均按 404 处理
         LambdaQueryWrapper<Category> queryWrapper = new LambdaQueryWrapper<>();
 
         queryWrapper
                 .eq(Category::getCategoryId, categoryId)
-                .eq(Category::getStatus, 1);
+                .eq(Category::getStatus, CategoryStatus.ENABLED.getCode());
 
         Category category = baseMapper.selectOne(queryWrapper);
 
-        if(category == null) {
-            throw new BusinessException(404, "分类不存在");
+        if (category == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "分类不存在");
         }
 
+        // 逻辑删除：仅将分类状态置为禁用，数据库记录保留
         Category updateCategory = new Category();
 
         updateCategory.setCategoryId(categoryId);
-        updateCategory.setStatus(0);
+        updateCategory.setStatus(CategoryStatus.DISABLED.getCode());
 
         baseMapper.updateById(updateCategory);
     }

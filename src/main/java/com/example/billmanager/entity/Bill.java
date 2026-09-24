@@ -1,6 +1,12 @@
 package com.example.billmanager.entity;
 
-import com.baomidou.mybatisplus.annotation.*;
+import com.baomidou.mybatisplus.annotation.FieldFill;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.example.billmanager.enums.BillType;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -50,10 +56,13 @@ public class Bill {
     /**
      * 账单类型。
      * <p>
-     * 可选值：INCOME（收入）、EXPENSE（支出）。
+     * 可选值：{@link BillType#INCOME}（收入）、{@link BillType#EXPENSE}（支出）。
+     * 使用枚举类型后，数据库读写由 MyBatis-Plus 依据枚举上的
+     * {@code @EnumValue} 注解自动完成与字符串（"INCOME" / "EXPENSE"）的转换，
+     * 数据库列 {@code bill_type VARCHAR(20)} 无需任何改动。
      * </p>
      */
-    private String billType;
+    private BillType billType;
 
     /**
      * 分类ID。

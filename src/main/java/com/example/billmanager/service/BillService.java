@@ -73,4 +73,19 @@ public interface BillService extends IService<Bill> {
      * @return 修改成功后的账单信息
      */
     Bill updateBillById(Long billId, BillUpdateDTO billUpdateDTO);
+
+    /**
+     * 根据账单ID删除账单。
+     *
+     * <p>
+     * 删除前校验账单是否存在，
+     * 不存在时抛出业务异常；
+     * 存在则执行逻辑删除（将 {@code deleted} 字段标记为 1，
+     * 数据库记录仍然保留，后续查询会自动过滤已删除的账单）。
+     * </p>
+     *
+     * @param billId 账单ID（非空校验已在控制层完成）
+     * @throws com.example.billmanager.exception.BusinessException 当账单不存在时抛出
+     */
+    void deleteBillById(Long billId);
 }

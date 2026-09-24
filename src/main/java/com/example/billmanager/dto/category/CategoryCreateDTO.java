@@ -1,7 +1,10 @@
 package com.example.billmanager.dto.category;
 
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 /**
@@ -23,9 +26,11 @@ public class CategoryCreateDTO {
      * <p>
      * 必填；与分类类型共同保证唯一性，
      * 同一类型下不允许出现同名分类。
+     * 最大长度 50 个字符，与数据库列 {@code category_name VARCHAR(50)} 保持一致。
      * </p>
      */
     @NotBlank(message = "分类名称不能为空")
+    @Size(max = 50, message = "分类名称长度不能超过50个字符")
     private String categoryName;
 
     /**
@@ -38,15 +43,17 @@ public class CategoryCreateDTO {
      * </p>
      */
     @NotBlank(message = "分类类型不能为空")
+    @Pattern(regexp = "INCOME|EXPENSE", message = "分类类型只能是INCOME或EXPENSE")
     private String categoryType;
 
     /**
      * 排序值。
      *
      * <p>
-     * 必填；数值越小，排序越靠前。
+     * 必填；数值越小，排序越靠前，不允许为负数。
      * </p>
      */
     @NotNull(message = "分类排序不能为空")
+    @Min(value = 0, message = "分类排序不能小于0")
     private Integer sort;
 }

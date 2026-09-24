@@ -48,6 +48,8 @@ public class BillQueryDTO {
      * 账单类型（可选查询条件）。
      * <p>
      * 可选值：INCOME（收入）、EXPENSE（支出）；为空时不按类型过滤。
+     * 传入非法取值时由业务层兜底转换并返回 400 业务异常，
+     * 不会抛出系统异常（500）。
      * </p>
      */
     private String billType;

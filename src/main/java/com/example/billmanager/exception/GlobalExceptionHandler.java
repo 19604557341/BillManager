@@ -1,5 +1,6 @@
 package com.example.billmanager.exception;
 
+import com.example.billmanager.enums.ErrorCode;
 import com.example.billmanager.vo.Result;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -54,6 +55,7 @@ public class GlobalExceptionHandler {
     ) {
         Map<String, String> errors = new LinkedHashMap<>();
 
+        // 收集所有字段校验错误：字段名 -> 错误提示信息
         methodArgumentNotValidException
                 .getBindingResult()
                 .getFieldErrors()
@@ -63,7 +65,7 @@ public class GlobalExceptionHandler {
                                 fieldError.getDefaultMessage()
                         ));
 
-        return Result.error(400, "参数校验失败", errors);
+        return Result.error(ErrorCode.BAD_REQUEST.getCode(), "参数校验失败", errors);
     }
 
     /**
@@ -78,11 +80,12 @@ public class GlobalExceptionHandler {
      * @return 统一格式的错误响应
      */
     @ExceptionHandler(ConstraintViolationException.class)
-    public Result<Map<String, String>> handleConstrainViolationException(
+    public Result<Map<String, String>> handleConstraintViolationException(
             ConstraintViolationException constraintViolationException
-    ){
+    ) {
         Map<String, String> errors = new LinkedHashMap<>();
 
+        // 收集所有约束校验错误：参数路径 -> 错误提示信息
         constraintViolationException
                 .getConstraintViolations()
                 .forEach(constraintViolation ->
@@ -91,7 +94,7 @@ public class GlobalExceptionHandler {
                                 constraintViolation.getMessage()
                         ));
 
-        return Result.error(400, "参数校验失败", errors);
+        return Result.error(ErrorCode.BAD_REQUEST.getCode(), "参数校验失败", errors);
     }
 
     /**
@@ -114,6 +117,7 @@ public class GlobalExceptionHandler {
     ) {
         Map<String, String> errors = new LinkedHashMap<>();
 
+        // 收集所有方法级参数校验错误：参数名 -> 错误提示信息
         exception.getParameterValidationResults().forEach(validationResult ->
                 validationResult.getResolvableErrors().forEach(resolvableError ->
                         errors.put(
@@ -121,21 +125,22 @@ public class GlobalExceptionHandler {
                                 resolvableError.getDefaultMessage()
                         )));
 
-        return Result.error(400, "参数校验失败", errors);
+        return Result.error(ErrorCode.BAD_REQUEST.getCode(), "参数校验失败", errors);
     }
 
     /**
      * 处理业务异常。
      *
-     *  <p>
+     * <p>
      *     业务层通过 {@link BusinessException} 表示预期的业务异常，
      *     由全局异常处理器统一转换为项目规定的响应格式。
      * </p>
+     *
      * @param businessException 业务异常
      * @return 统一格式的错误响应
      */
     @ExceptionHandler(BusinessException.class)
     public Result<Void> handleBusinessException(BusinessException businessException) {
-        return Result.error(businessException.getCode(), businessException.getMessage(),null);
+        return Result.error(businessException.getCode(), businessException.getMessage(), null);
     }
 }

@@ -28,7 +28,7 @@ public class BillManagerApplication {
      *
      * @param args 命令行启动参数
      */
-    static void main(String[] args) {
+    public static void main(String[] args) {
         SpringApplication.run(BillManagerApplication.class, args);
     }
 

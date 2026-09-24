@@ -1,5 +1,6 @@
 package com.example.billmanager.vo;
 
+import com.example.billmanager.enums.BillType;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -41,7 +42,7 @@ public class BillPageVO {
      * 可选值：INCOME（收入）、EXPENSE（支出）。
      * </p>
      */
-    private String billType;
+    private BillType billType;
 
     /**
      * 分类ID。

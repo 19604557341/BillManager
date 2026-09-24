@@ -13,7 +13,14 @@ import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
  * 账单控制器。
@@ -64,8 +71,10 @@ public class BillController {
      * <p>
      *     根据指定的页码和每页数据量查询账单列表，
      *     避免一次性加载全部账单数据。
+     *     支持按账单类型、分类、账单日期范围组合过滤，
+     *     所有查询条件均为可选。
      * </p>
-     * @param billQueryDTO billQueryDTO
+     * @param billQueryDTO 账单分页查询条件（页码、每页数量、账单类型、分类、日期范围）
      * @return 分页账单数据
      */
     @GetMapping("/page")
@@ -122,5 +131,30 @@ public class BillController {
         Bill bill = billService.updateBillById(billId, billUpdateDTO);
 
         return Result.success("修改成功", bill);
+    }
+
+    /**
+     * 根据账单ID删除账单。
+     * <p>
+     *     根据路径中的账单ID定位待删除的账单，
+     *     调用业务层完成账单删除。
+     *     账单不存在时由业务层抛出业务异常，
+     *     再由全局异常处理器统一处理。
+     * </p>
+     * <p>
+     *     删除操作是对资源的移除，因此使用 DELETE 请求方式。
+     *     实际执行的是逻辑删除（标记 {@code deleted} 字段），
+     *     数据库记录仍然保留，对前端表现为账单已被删除。
+     * </p>
+     * @param billId 账单ID
+     * @return 删除成功返回 true
+     */
+    @DeleteMapping("/{billId}")
+    public Result<Boolean> deleteBill(@PathVariable @NotNull(message = "账单ID不能为空") Long billId) {
+
+        // 调用业务层执行删除，账单不存在时会抛出 404 业务异常
+        billService.deleteBillById(billId);
+
+        return Result.success("删除成功", true);
     }
 }
