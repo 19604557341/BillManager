@@ -3,15 +3,11 @@
 spring:
   application:
     name: BillManager
-  # 加载项目根目录的 .env（已被 gitignore 排除）；同名系统环境变量优先级更高，生产环境直接用环境变量即可。
-  # optional: 前缀保证没有 .env 时不报错，此时若 DB_PASSWORD 也未设置，会因占位符无法解析而快速失败。
-  config:
-    import: "optional:file:.env[.properties]"
   datasource:
     url: jdbc:mysql://localhost:3306/bill_manager?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    # 默认使用 bill_manager 库的专用受限账户（仅 DML 权限），不使用 root 直连
-    username: ${DB_USERNAME:billmanager}
-    password: ${DB_PASSWORD}
+    username: root
+    # 改成你本地 MySQL 的 root 密码
+    password: 123456
     driver-class-name: com.mysql.cj.jdbc.Driver
   devtools:
     restart:

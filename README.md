@@ -27,7 +27,7 @@
 |------|--------|--------|
 | **分类管理** | 列表查询（按类型过滤）、新增、修改、逻辑删除（禁用）、重名校验、禁用分类自动恢复启用 | 分类图标、拖拽排序、删除前的关联账单保护 |
 | **账单管理** | 详情查询、多条件分页查询、新增、修改、逻辑删除 | 统计报表（收支汇总 / 分类占比 / 趋势） |
-| **基础设施** | 统一响应 `Result<T>`、全局异常处理、JSR-303 参数校验、字段自动填充、分页插件、枚举治理、数据库密码外置 | 用户体系与鉴权、Swagger 接口文档、单元 / 集成测试 |
+| **基础设施** | 统一响应 `Result<T>`、全局异常处理、JSR-303 参数校验、字段自动填充、分页插件、枚举治理 | 用户体系与鉴权、Swagger 接口文档、单元 / 集成测试 |
 
 ### 已完成的关键设计
 
@@ -37,7 +37,6 @@
 - **规避 N+1 查询**：分页查询先取当前页账单，再提取分类 ID **批量**查询并组装 Map，而非逐条查询分类名。
 - **并发竞态兜底**：删除账单时检查受影响行数，行数为 0（已被并发删除）同样返回 404，不制造「删除成功」的假象。
 - **枚举治理**：`BillType`、`CategoryStatus`、`ErrorCode` 三个枚举收敛了散落的字符串与数字魔法值；通过 `@EnumValue` + `@JsonValue` 保证数据库存储值与 JSON 报文格式在改造前后完全不变。
-- **凭据外置与最小权限**：数据库密码不再硬编码，改为 `${DB_USERNAME}` / `${DB_PASSWORD}` 占位符 + 本地 `.env` / 系统环境变量注入；应用默认使用仅具备 `bill_manager` 库 DML 权限的专用账户，不再以 `root` 直连。
 
 ---
 
@@ -221,39 +220,18 @@ GET /api/bills/page?page=1&size=10&billType=EXPENSE&startDate=2026-09-01&endDate
 mysql -u root -p < src/main/resources/Sql.sql
 ```
 
-### 2. 配置数据库账户
+### 2. 修改数据库密码
 
-数据库凭据不入库，通过项目根目录的 `.env` 文件提供。复制模板后填入真实值：
+编辑 [`src/main/resources/application.yml`](src/main/resources/application.yml)，把 `spring.datasource.password` 改成你本地 MySQL 的 root 密码：
 
-```bash
-# Windows
-copy .env.example .env
-
-# macOS / Linux
-cp .env.example .env
+```yaml
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/bill_manager?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456        # ← 改成你自己的 MySQL 密码
+    driver-class-name: com.mysql.cj.jdbc.Driver
 ```
-
-建议为本项目建立**权限受限的专用账户**，而非使用 `root` 直连。用 root 登录 MySQL 执行：
-
-```sql
-CREATE USER 'billmanager'@'localhost' IDENTIFIED BY '你的强随机密码';
-GRANT SELECT, INSERT, UPDATE, DELETE ON bill_manager.* TO 'billmanager'@'localhost';
-```
-
-应用只需要 DML 权限，无需 DDL 与管理权限。然后编辑 `.env`：
-
-```properties
-DB_USERNAME=billmanager
-DB_PASSWORD=你的强随机密码
-```
-
-`.env` 已被 `.gitignore` 排除，不会被提交。
-
-> 生产 / CI 环境无需 `.env`，直接设置同名系统环境变量即可 —— 其优先级**高于** `.env` 文件。
-> 若 `DB_PASSWORD` 两处都未提供，应用启动时会因占位符无法解析而快速失败，不会静默使用空密码。
-> `DB_USERNAME` 未提供时默认为 `billmanager`。
-
-数据库连接地址如需修改，编辑 [`src/main/resources/application.yml`](src/main/resources/application.yml) 的 `spring.datasource.url`。
 
 ### 3. 启动应用
 
