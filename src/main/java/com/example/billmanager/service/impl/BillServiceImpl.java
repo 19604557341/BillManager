@@ -18,7 +18,6 @@ import com.example.billmanager.mapper.CategoryMapper;
 import com.example.billmanager.service.BillService;
 import com.example.billmanager.vo.BillPageVO;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
 import java.util.HashMap;
 import java.util.List;
@@ -43,7 +42,7 @@ public class BillServiceImpl extends ServiceImpl<BillMapper, Bill> implements Bi
     /**
      * 分类数据访问层。
      * <p>
-     *     用于查询账单关联的分类信息（分类名称组装、新增账单时的分类校验）。
+     * 用于查询账单关联的分类信息（分类名称组装、新增账单时的分类校验）。
      * </p>
      */
     private final CategoryMapper categoryMapper;
@@ -60,8 +59,8 @@ public class BillServiceImpl extends ServiceImpl<BillMapper, Bill> implements Bi
     /**
      * 根据账单ID查询账单详情。
      * <p>
-     *     账单不存在时抛出业务异常，
-     *     由全局异常处理器统一转换为错误响应。
+     * 账单不存在时抛出业务异常，
+     * 由全局异常处理器统一转换为错误响应。
      * </p>
      *
      * @param billId 账单ID
@@ -82,12 +81,12 @@ public class BillServiceImpl extends ServiceImpl<BillMapper, Bill> implements Bi
     /**
      * 分页查询账单。
      * <p>
-     *     根据前端传入的查询条件动态构造查询条件，
-     *     然后使用 MyBatis-Plus 执行分页查询。
+     * 根据前端传入的查询条件动态构造查询条件，
+     * 然后使用 MyBatis-Plus 执行分页查询。
      * </p>
      * <p>
-     *     查询完成后，根据当前页账单中的分类ID批量查询分类信息，
-     *     并将分类名称组装到 {@link BillPageVO} 中。
+     * 查询完成后，根据当前页账单中的分类ID批量查询分类信息，
+     * 并将分类名称组装到 {@link BillPageVO} 中。
      * </p>
      *
      * @param billQueryDTO 账单分页查询条件
@@ -98,8 +97,9 @@ public class BillServiceImpl extends ServiceImpl<BillMapper, Bill> implements Bi
 
         Page<Bill> page = new Page<>(billQueryDTO.getPage(), billQueryDTO.getSize());
 
-        // 账单类型为可选条件：传入时转换为枚举参与过滤，未传入时为 null 不参与过滤
-        BillType billTypeFilter = parseBillType(billQueryDTO.getBillType());
+        // 账单类型为可选条件：DTO 已改为枚举类型，非法值在 Jackson 反序列化阶段即被拦截，
+        // 此处直接取值参与过滤；未传入时为 null，不参与过滤
+        BillType billTypeFilter = billQueryDTO.getBillType();
 
         LambdaQueryWrapper<Bill> queryWrapper = new LambdaQueryWrapper<>();
 
@@ -145,8 +145,8 @@ public class BillServiceImpl extends ServiceImpl<BillMapper, Bill> implements Bi
     /**
      * 根据分类ID列表批量查询分类信息。
      * <p>
-     *     使用 IN 查询一次性获取当前页账单涉及的所有分类，
-     *     避免在循环中逐条查询数据库（N+1 查询问题）。
+     * 使用 IN 查询一次性获取当前页账单涉及的所有分类，
+     * 避免在循环中逐条查询数据库（N+1 查询问题）。
      * </p>
      *
      * @param categoryIds 分类ID列表（已去重、去 null）
@@ -176,9 +176,9 @@ public class BillServiceImpl extends ServiceImpl<BillMapper, Bill> implements Bi
     /**
      * 将账单实体转换为分页展示对象。
      * <p>
-     *     复制账单基础字段，并根据分类ID从分类映射中
-     *     取出分类名称一并组装到 VO 中；
-     *     分类不存在时分类名称保持为 null，不影响账单数据返回。
+     * 复制账单基础字段，并根据分类ID从分类映射中
+     * 取出分类名称一并组装到 VO 中；
+     * 分类不存在时分类名称保持为 null，不影响账单数据返回。
      * </p>
      *
      * @param bill        账单实体
@@ -209,7 +209,7 @@ public class BillServiceImpl extends ServiceImpl<BillMapper, Bill> implements Bi
     /**
      * 新增账单。
      * <p>
-     *     新增前根据分类ID查询分类信息，并进行业务校验：
+     * 新增前根据分类ID查询分类信息，并进行业务校验：
      *     <ol>
      *         <li>分类必须存在，否则抛出 404 业务异常；</li>
      *         <li>分类必须处于启用状态（status=1），已禁用分类不允许记账；</li>
@@ -246,8 +246,8 @@ public class BillServiceImpl extends ServiceImpl<BillMapper, Bill> implements Bi
             throw new BusinessException(ErrorCode.BAD_REQUEST, "所选分类已禁用，请重新选择");
         }
 
-        // 账单类型（枚举）已由控制层参数校验保证取值合法，此处直接转换
-        BillType billType = parseBillType(billCreatedDTO.getBillType());
+        // DTO 中账单类型已是枚举，取值合法性由 Jackson 反序列化与 @NotNull 校验保证，直接使用
+        BillType billType = billCreatedDTO.getBillType();
 
         if (billType != null && !Objects.equals(category.getCategoryType(), billType.getCode())) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "分类类型与账单类型不匹配");
@@ -271,11 +271,11 @@ public class BillServiceImpl extends ServiceImpl<BillMapper, Bill> implements Bi
     /**
      * 根据账单ID修改账单。
      * <p>
-     *     修改前先根据账单ID查询账单，账单不存在时直接抛出 404 业务异常，
-     *     避免对不存在的账单执行无意义的分类校验和更新操作。
+     * 修改前先根据账单ID查询账单，账单不存在时直接抛出 404 业务异常，
+     * 避免对不存在的账单执行无意义的分类校验和更新操作。
      * </p>
      * <p>
-     *     然后对账单新选择的分类进行业务校验（与新增账单的校验规则一致）：
+     * 然后对账单新选择的分类进行业务校验（与新增账单的校验规则一致）：
      *     <ol>
      *         <li>分类必须存在，否则抛出 404 业务异常；</li>
      *         <li>分类必须处于启用状态（status=1），已禁用分类不允许记账；</li>
@@ -315,8 +315,8 @@ public class BillServiceImpl extends ServiceImpl<BillMapper, Bill> implements Bi
             throw new BusinessException(ErrorCode.BAD_REQUEST, "所选分类已禁用，请重新选择");
         }
 
-        // 账单类型（枚举）已由控制层参数校验保证取值合法，此处直接转换
-        BillType billType = parseBillType(billUpdateDTO.getBillType());
+        // DTO 中账单类型已是枚举，取值合法性由 Jackson 反序列化与 @NotNull 校验保证，直接使用
+        BillType billType = billUpdateDTO.getBillType();
 
         if (billType != null && !Objects.equals(category.getCategoryType(), billType.getCode())) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "分类类型与账单类型不匹配，请重新选择");
@@ -338,20 +338,20 @@ public class BillServiceImpl extends ServiceImpl<BillMapper, Bill> implements Bi
     /**
      * 根据账单ID删除账单。
      * <p>
-     *     删除前先查询账单是否存在，
-     *     账单不存在时直接抛出 404 业务异常，
-     *     避免对不存在的账单执行无意义的删除操作。
+     * 删除前先查询账单是否存在，
+     * 账单不存在时直接抛出 404 业务异常，
+     * 避免对不存在的账单执行无意义的删除操作。
      * </p>
      * <p>
-     *     注意：由于 {@link Bill} 实体的 {@code deleted} 字段标注了
-     *     {@code @TableLogic}，此处执行的是<b>逻辑删除</b>而非物理删除，
-     *     MyBatis-Plus 会将删除操作自动转换为
-     *     {@code UPDATE bill SET deleted = 1 WHERE bill_id = ?}，
-     *     数据库记录仍然保留，后续所有查询也会自动过滤已删除的账单。
+     * 注意：由于 {@link Bill} 实体的 {@code deleted} 字段标注了
+     * {@code @TableLogic}，此处执行的是<b>逻辑删除</b>而非物理删除，
+     * MyBatis-Plus 会将删除操作自动转换为
+     * {@code UPDATE bill SET deleted = 1 WHERE bill_id = ?}，
+     * 数据库记录仍然保留，后续所有查询也会自动过滤已删除的账单。
      * </p>
      * <p>
-     *     删除后会检查受影响行数，防止"查询后、删除前"
-     *     账单被其他请求并发删除时仍然返回删除成功的假象。
+     * 删除后会检查受影响行数，防止"查询后、删除前"
+     * 账单被其他请求并发删除时仍然返回删除成功的假象。
      * </p>
      *
      * @param billId 账单ID
@@ -373,37 +373,6 @@ public class BillServiceImpl extends ServiceImpl<BillMapper, Bill> implements Bi
         // 受影响行数为 0，说明账单在查询之后被其他请求并发删除，同样按 404 处理
         if (rows == 0) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "账单不存在");
-        }
-    }
-
-    /**
-     * 将账单类型字符串转换为账单类型枚举。
-     * <p>
-     *     DTO 中的账单类型以字符串形式接收（便于 JSR-303 注解校验并返回友好提示），
-     *     实体中使用 {@link BillType} 枚举保证类型安全，
-     *     本方法负责二者之间的转换。
-     * </p>
-     * <p>
-     *     入参为空时返回 null，用于分页查询中"未指定账单类型"的场景；
-     *     取值合法性通常已由控制层的 {@code @Pattern} 校验保证，
-     *     此处仍做兜底转换，防止业务层被其他入口直接调用时
-     *     因非法字符串抛出 {@code IllegalArgumentException}（表现为 500 系统错误），
-     *     转而抛出语义明确的 400 业务异常。
-     * </p>
-     *
-     * @param billType 账单类型字符串（INCOME / EXPENSE），可为空
-     * @return 对应的账单类型枚举；入参为空时返回 null
-     * @throws BusinessException 当账单类型取值非法时抛出
-     */
-    private BillType parseBillType(String billType) {
-        if (!StringUtils.hasText(billType)) {
-            return null;
-        }
-
-        try {
-            return BillType.valueOf(billType);
-        } catch (IllegalArgumentException e) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "账单类型只能是INCOME或EXPENSE");
         }
     }
 }

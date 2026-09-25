@@ -1,5 +1,6 @@
 package com.example.billmanager.dto.bill;
 
+import com.example.billmanager.enums.BillType;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.Data;
@@ -48,11 +49,12 @@ public class BillQueryDTO {
      * 账单类型（可选查询条件）。
      * <p>
      * 可选值：INCOME（收入）、EXPENSE（支出）；为空时不按类型过滤。
-     * 传入非法取值时由业务层兜底转换并返回 400 业务异常，
-     * 不会抛出系统异常（500）。
+     * 类型已由 String 改为 {@code BillType} 枚举：传入非法取值时在 Jackson
+     * 反序列化阶段即失败，由全局异常处理器统一返回 400 提示，
+     * 不会抛出系统异常（500），业务层也不再需要字符串转枚举的兜底逻辑。
      * </p>
      */
-    private String billType;
+    private BillType billType;
 
     /**
      * 分类ID（可选查询条件）。

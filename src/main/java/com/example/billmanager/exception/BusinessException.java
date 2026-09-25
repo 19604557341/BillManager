@@ -1,6 +1,7 @@
 package com.example.billmanager.exception;
 
 import com.example.billmanager.enums.ErrorCode;
+import lombok.Getter;
 
 import java.io.Serial;
 
@@ -26,6 +27,7 @@ import java.io.Serial;
  * @author 白麝花生
  * @since 2026-09-14
  */
+@Getter
 public class BusinessException extends RuntimeException {
 
     /**
@@ -36,6 +38,8 @@ public class BusinessException extends RuntimeException {
 
     /**
      * 业务异常状态码。
+     * -- GETTER --
+     *  获取业务异常状态码。
      */
     private final Integer code;
 
@@ -58,15 +62,6 @@ public class BusinessException extends RuntimeException {
     public BusinessException(ErrorCode errorCode, String message) {
         super(message);
         this.code = errorCode.getCode();
-    }
-
-    /**
-     * 获取业务异常状态码。
-     *
-     * @return 业务异常状态码
-     */
-    public Integer getCode() {
-        return code;
     }
 
 }

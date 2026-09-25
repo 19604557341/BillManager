@@ -1,5 +1,6 @@
 package com.example.billmanager.dto.bill;
 
+import com.example.billmanager.enums.BillType;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
@@ -49,10 +50,17 @@ public class BillUpdateDTO {
      * 必填；只允许 INCOME（收入）或 EXPENSE（支出），
      * 与数据库列 {@code bill_type VARCHAR(20) NOT NULL} 的取值约定一致。
      * </p>
+     * <p>
+     * 类型已由 String 改为 {@code BillType} 枚举：取值合法性由 Jackson
+     * 反序列化阶段直接保证，非法值会抛出 {@code HttpMessageNotReadableException}，
+     * 由全局异常处理器统一返回"参数 billType 取值无效"的 400 提示。
+     * 因此下方的 {@code @Pattern} 正则校验不再需要（该注解只对 String 生效，
+     * 对枚举字段永远不会触发），保留注释仅作改造记录。
+     * </p>
      */
-    @NotBlank(message = "账单类型不能为空")
-    @Pattern(regexp = "INCOME|EXPENSE", message = "账单类型只能是INCOME或EXPENSE")
-    private String billType;
+    @NotNull(message = "账单类型不能为空")
+//    @Pattern(regexp = "INCOME|EXPENSE", message = "账单类型只能是INCOME或EXPENSE")
+    private BillType billType;
 
     /**
      * 分类ID。
