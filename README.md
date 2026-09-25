@@ -1,9 +1,9 @@
 # BillManager 账单管理系统
 
 > 基于 **Spring Boot 4.1.1 + Java 25 + MyBatis-Plus** 的个人记账后端服务。
-> 提供账单与分类的完整增删改查、多条件组合分页查询，统一响应格式与全局异常处理。
+> 提供账单与分类的完整增删改查、多条件组合分页查询、收支统计报表（总额 / 分类占比 / 日月趋势），统一响应格式与全局异常处理。
 
-当前处于**后端 API 开发阶段**：核心 CRUD 已完成，统计报表、用户体系、接口文档与自动化测试尚未开始。
+当前处于**后端 API 开发阶段**：核心 CRUD 与统计报表已完成，用户体系、接口文档与自动化测试尚未开始。
 
 ---
 
@@ -26,8 +26,8 @@
 | 模块 | 已完成 | 待完成 |
 |------|--------|--------|
 | **分类管理** | 列表查询（按类型过滤）、新增、修改、逻辑删除（禁用）、重名校验、禁用分类自动恢复启用 | 分类图标、拖拽排序、删除前的关联账单保护 |
-| **账单管理** | 详情查询、多条件分页查询、新增、修改、逻辑删除 | 统计报表（收支汇总 / 分类占比 / 趋势） |
-| **基础设施** | 统一响应 `Result<T>`、全局异常处理、JSR-303 参数校验、字段自动填充、分页插件、枚举治理 | 用户体系与鉴权、Swagger 接口文档、单元 / 集成测试 |
+| **账单管理** | 详情查询、多条件分页查询、新增、修改、逻辑删除、统计报表（收支汇总 / 分类占比 / 日月趋势） | — |
+| **基础设施** | 统一响应 `Result<T>`、全局异常处理（含请求体解析异常）、JSR-303 参数校验、字段自动填充、分页插件、枚举治理（DTO 已收敛为枚举） | 用户体系与鉴权、Swagger 接口文档、单元 / 集成测试 |
 
 ### 已完成的关键设计
 
@@ -36,7 +36,9 @@
 - **账单—分类三重业务校验**：新增 / 修改账单时校验分类「存在（404）→ 处于启用状态（400）→ 类型与账单类型一致（400）」，避免脏数据与外键异常退化成 500。
 - **规避 N+1 查询**：分页查询先取当前页账单，再提取分类 ID **批量**查询并组装 Map，而非逐条查询分类名。
 - **并发竞态兜底**：删除账单时检查受影响行数，行数为 0（已被并发删除）同样返回 404，不制造「删除成功」的假象。
-- **枚举治理**：`BillType`、`CategoryStatus`、`ErrorCode` 三个枚举收敛了散落的字符串与数字魔法值；通过 `@EnumValue` + `@JsonValue` 保证数据库存储值与 JSON 报文格式在改造前后完全不变。
+- **枚举治理**：`BillType`、`CategoryStatus`、`ErrorCode` 三个枚举收敛了散落的字符串与数字魔法值；通过 `@EnumValue` + `@JsonValue` 保证数据库存储值与 JSON 报文格式在改造前后完全不变。DTO 层的 `billType` 也已收敛为枚举，非法取值在 Jackson 反序列化阶段即被拦截。
+- **统计模块聚合下推**：总额 / 分类占比 / 收支趋势均由 SQL（`SUM` + `GROUP BY` + `COALESCE`）完成聚合，Java 侧只处理 SQL 不便表达的逻辑——按日分组的**日期补零**（无账单日期补 0，保证折线图 X 轴连续）与**占比计算**（先除保留 4 位小数再乘 100，规避无限循环小数异常，合计为 0 时占比置 0 防除零）。
+- **统计不丢禁用分类的账单**：分类汇总用 `LEFT JOIN category ... AND status = 1`，分类被禁用或删除后账单金额仍计入统计，仅分类名为 null。
 
 ---
 
@@ -50,6 +52,7 @@
 |------|------|------|
 | `GET` | `/api/bills/{billId}` | 查询账单详情，不存在返回 404 |
 | `GET` | `/api/bills/page` | 分页查询账单列表，支持多条件组合过滤 |
+| `GET` | `/api/bills/statistics` | 账单统计（总额 / 分类占比 / 日月趋势），条件通过 JSON 请求体传递 |
 | `POST` | `/api/bills` | 新增账单 |
 | `PUT` | `/api/bills/{billId}` | 修改账单 |
 | `DELETE` | `/api/bills/{billId}` | 删除账单（逻辑删除） |
@@ -66,6 +69,17 @@
 | `endDate` | LocalDate | — | 截止日期（含），格式 `yyyy-MM-dd` |
 
 结果按「账单日期、创建时间」倒序排列。
+
+**统计查询参数**（通过 JSON 请求体传递，即 GET + `@RequestBody`，要求客户端支持 GET 携带请求体）：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `startDate` | LocalDate | ✅ | 统计开始日期（含），格式 `yyyy-MM-dd` |
+| `endDate` | LocalDate | ✅ | 统计结束日期（含），格式 `yyyy-MM-dd` |
+| `billType` | String | ✅ | `INCOME` / `EXPENSE`，非法值返回 400 |
+| `groupBy` | String | ❌ | 趋势分组方式，默认 `day` 按日；传 `month` 按月 |
+
+响应 `data` 包含：`totalIncome` / `totalExpense` / `balance`（结余，可为负）、起止日期回显、`categoryStatisticsVOList`（分类金额与占比，按金额降序）、`trendStatisticsVOList`（收支趋势，按日分组时已对无账单日期补 0）。
 
 ### 分类 `/api/categories`
 
@@ -97,9 +111,18 @@
   "code": 400,
   "message": "参数校验失败",
   "data": {
-    "billAmount": "账单金额必须大于0",
-    "billType": "账单类型只能是INCOME或EXPENSE"
+    "billAmount": "账单金额必须大于0"
   }
+}
+```
+
+枚举字段（如 `billType`）传入非法值时，在 Jackson 反序列化阶段即被拦截，返回：
+
+```json
+{
+  "code": 400,
+  "message": "参数 billType 取值无效：XXX，只允许：INCOME、EXPENSE",
+  "data": null
 }
 ```
 
@@ -165,6 +188,20 @@ Content-Type: application/json
 
 ```http
 GET /api/bills/page?page=1&size=10&billType=EXPENSE&startDate=2026-09-01&endDate=2026-09-30
+```
+
+**统计查询**（GET 携带 JSON 请求体）
+
+```http
+GET /api/bills/statistics
+Content-Type: application/json
+
+{
+  "startDate": "2026-09-01",
+  "endDate": "2026-09-30",
+  "billType": "EXPENSE",
+  "groupBy": "day"
+}
 ```
 
 ---
@@ -263,17 +300,19 @@ mvnw.cmd test
 src/main/java/com/example/billmanager/
 ├── BillManagerApplication.java      # 启动类
 ├── config/                          # MyBatisPlusConfig（分页插件）、MyMetaObjectHandler（字段自动填充）
-├── controller/                      # BillController、CategoryController
+├── controller/                      # BillController、CategoryController、BillStatisticsController
 ├── dto/                             # 请求参数对象
+│   ├── amount/                      #   BillStatisticsDTO（统计查询条件）、3 个统计查询结果 DTO
 │   ├── bill/                        #   BillCreatedDTO、BillUpdateDTO、BillQueryDTO
 │   └── category/                    #   CategoryCreateDTO、CategoryUpdateDTO
 ├── entity/                          # Bill、Category
 ├── enums/                           # BillType、CategoryStatus、ErrorCode
 ├── exception/                       # BusinessException、GlobalExceptionHandler
-├── mapper/                          # BillMapper、CategoryMapper
-├── service/                         # 业务接口
+├── mapper/                          # BillMapper（含统计聚合 SQL）、CategoryMapper
+├── service/                         # 业务接口、BillStatisticsService（统计服务）
 │   └── impl/                        # BillServiceImpl、CategoryServiceImpl
 └── vo/                              # Result（统一响应）、BillPageVO（分页返回对象）
+    └── amount/                      # BillStatisticsVO、CategoryStatisticsVO、TrendStatisticsVO
 ```
 
 ---
@@ -281,8 +320,9 @@ src/main/java/com/example/billmanager/
 ## 已知问题
 
 - **自动化测试严重不足**：目前仅有一个 `contextLoads()` 上下文加载测试。由于 HikariCP 懒初始化，该测试**不会真正建立数据库连接**，因此它通过并不代表数据源配置正确，也未覆盖任何业务逻辑。补齐 Service / Controller 层测试是当前优先级最高的工程化任务。
-- **全局异常处理未兜底**：`GlobalExceptionHandler` 尚未覆盖 `Exception`、`HttpMessageNotReadableException`、`MissingServletRequestParameterException` 等，异常堆栈有直接暴露给前端的风险。
-- **枚举治理未完全收敛**：`Bill` 实体与 `BillPageVO` 已使用 `BillType` 枚举，但 `Category.categoryType` 与各 DTO 仍为 `String`，由 `BillServiceImpl.parseBillType()` 转换并兜底 400。
+- **全局异常处理未完全兜底**：`HttpMessageNotReadableException`（请求体解析失败，如枚举非法值）已于 2026-09-25 覆盖，但 `Exception`、`MissingServletRequestParameterException` 等仍未兜底，异常堆栈有直接暴露给前端的风险。
+- **枚举治理未完全收敛**：`Bill` 实体、`BillPageVO` 与三个账单 DTO 已使用 `BillType` 枚举（原 `parseBillType()` 兜底转换已删除），但 `Category.categoryType` 与分类 DTO 仍为 `String`。
+- **统计接口参数校验不完整**：未校验 `startDate <= endDate`（起止倒置时返回全 0 而非报错），`groupBy` 无取值白名单；另 GET + `@RequestBody` 的组合要求客户端支持 GET 携带请求体。
 - **分页 VO 手动逐字段拷贝**：`BillServiceImpl` 中账单实体到 `BillPageVO` 的映射为手写赋值，后续可引入 MapStruct 简化。
 - **生产环境需关闭调试配置**：`mybatis-plus.configuration.log-impl: StdOutImpl`（SQL 控制台日志）与 devtools 热重启应在生产 profile 中关闭。
 
@@ -301,6 +341,6 @@ src/main/java/com/example/billmanager/
 
 ## 后续路线图
 
-**中期（P1）** — 账单统计接口（收支汇总、分类占比、日月趋势）、分类删除的关联保护、SpringDoc OpenAPI 接口文档、单元与集成测试（目标核心业务覆盖率 ≥ 70%）。
+**中期（P1）** — 分类删除的关联保护、SpringDoc OpenAPI 接口文档、单元与集成测试（目标核心业务覆盖率 ≥ 70%）、统计接口参数校验补全（起止日期先后、`groupBy` 白名单）。
 
 **长期（P2）** — 用户模块与多租户数据隔离（Spring Security + JWT）、预算管理、周期性账单自动生成、Excel / CSV 导入导出、分类缓存（Caffeine / Redis）与深翻页优化、配套前端（Vue3 / React + ECharts）。
