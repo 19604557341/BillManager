@@ -27,7 +27,7 @@ public class CategoryAmountDTO {
     /**
      * 分类名称。
      * <p>
-     * 通过 LEFT JOIN 分类表取得，且只关联启用状态（status=1）的分类；
+     * 通过 LEFT JOIN 分类表取得，且只关联启用状态（status=0，见 {@code CategoryStatus#ENABLED}）的分类；
      * 分类被禁用或已删除时为 null，但对应账单金额仍会计入统计。
      * </p>
      */

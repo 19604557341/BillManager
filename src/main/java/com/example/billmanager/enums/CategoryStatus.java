@@ -36,15 +36,15 @@ import lombok.Getter;
 public enum CategoryStatus {
 
     /** 禁用（分类的逻辑删除状态，禁用后不可再被新账单选择） */
-    DISABLED(0, "禁用"),
+    DISABLED(1, "禁用"),
 
     /** 启用（分类的正常可用状态） */
-    ENABLED(1, "启用");
+    ENABLED(0, "启用");
 
     /**
      * 状态码。
      * <p>
-     * 0：禁用；1：启用。
+     * 0：启用；1：禁用。
      * 作为数据库存储值（{@code @EnumValue}）与 JSON 序列化值（{@code @JsonValue}）。
      * </p>
      */
@@ -63,7 +63,7 @@ public enum CategoryStatus {
     /**
      * 构造方法。
      *
-     * @param code 状态码（0：禁用；1：启用）
+     * @param code 状态码（1：禁用；0：启用）
      * @param desc 状态中文描述
      */
     CategoryStatus(Integer code, String desc) {

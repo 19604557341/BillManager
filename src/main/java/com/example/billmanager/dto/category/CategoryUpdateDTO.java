@@ -51,7 +51,7 @@ public class CategoryUpdateDTO {
     /**
      * 分类状态。
      * <p>
-     * 必填；1：启用；0：禁用。
+     * 必填；0：启用；1：禁用（见 {@code CategoryStatus}）。
      * </p>
      */
     @NotNull(message = "分类状态不能为空")

@@ -212,7 +212,7 @@ public class BillServiceImpl extends ServiceImpl<BillMapper, Bill> implements Bi
      * 新增前根据分类ID查询分类信息，并进行业务校验：
      *     <ol>
      *         <li>分类必须存在，否则抛出 404 业务异常；</li>
-     *         <li>分类必须处于启用状态（status=1），已禁用分类不允许记账；</li>
+     *         <li>分类必须处于启用状态（status=0，见 {@code CategoryStatus#ENABLED}），已禁用分类不允许记账；</li>
      *         <li>分类类型必须与账单类型一致（如收入账单只能选择收入分类），
      *             防止出现"收入账单挂支出分类"的脏数据。</li>
      *     </ol>
@@ -278,7 +278,7 @@ public class BillServiceImpl extends ServiceImpl<BillMapper, Bill> implements Bi
      * 然后对账单新选择的分类进行业务校验（与新增账单的校验规则一致）：
      *     <ol>
      *         <li>分类必须存在，否则抛出 404 业务异常；</li>
-     *         <li>分类必须处于启用状态（status=1），已禁用分类不允许记账；</li>
+     *         <li>分类必须处于启用状态（status=0，见 {@code CategoryStatus#ENABLED}），已禁用分类不允许记账；</li>
      *         <li>分类类型必须与账单类型一致（如收入账单只能选择收入分类），
      *             防止出现"收入账单挂支出分类"的脏数据。</li>
      *     </ol>

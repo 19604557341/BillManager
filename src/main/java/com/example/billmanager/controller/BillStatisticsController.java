@@ -4,9 +4,9 @@ import com.example.billmanager.dto.amount.BillStatisticsDTO;
 import com.example.billmanager.service.BillStatisticsService;
 import com.example.billmanager.vo.Result;
 import com.example.billmanager.vo.amount.BillStatisticsVO;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>
  * 注意：统计条件（日期范围、账单类型、分组方式）通过 JSON 请求体传递，
  * 即 GET 请求搭配 {@code @RequestBody} 使用，
- * 要求客户端（前端 axios / Apifox 等）支持 GET 携带请求体。
+ * 要求客户端（前端 axios / ApiFox 等）支持 GET 携带请求体。
  * </p>
  *
  * @author 白麝花生
@@ -33,6 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/bills")
+@Tag(name = "账单统计", description = "账单统计接口")
 public class BillStatisticsController {
 
     /**
@@ -66,7 +67,7 @@ public class BillStatisticsController {
      * @return 统一响应格式包装的统计结果
      */
     @GetMapping("/statistics")
-    public Result<BillStatisticsVO> billStatisticsVO(@Valid @RequestBody BillStatisticsDTO billStatisticsDTO) {
+    public Result<BillStatisticsVO> billStatisticsVO(@Valid BillStatisticsDTO billStatisticsDTO) {
         BillStatisticsVO vo = billStatisticsService.getStatistics(billStatisticsDTO);
         return Result.success("查询成功", vo);
     }

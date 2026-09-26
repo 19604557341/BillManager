@@ -5,6 +5,7 @@ import com.example.billmanager.dto.category.CategoryCreateDTO;
 import com.example.billmanager.dto.category.CategoryUpdateDTO;
 import com.example.billmanager.entity.Category;
 import com.example.billmanager.service.CategoryService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -36,6 +37,7 @@ import java.util.List;
 @Slf4j
 @RestController
 @RequestMapping("/api/categories")
+@Tag(name = "分类管理", description = "分类增删改查接口")
 public class CategoryController {
 
     /**
@@ -45,6 +47,14 @@ public class CategoryController {
 
     public CategoryController(CategoryService categoryService) {
         this.categoryService = categoryService;
+    }
+
+    @GetMapping("/{categoryId}")
+    public Result<Category> getCategoryById(@PathVariable String categoryId) {
+
+        Category category = categoryService.getCategoryById(categoryId);
+
+        return Result.success("查询成功", category);
     }
 
     /**
@@ -116,8 +126,8 @@ public class CategoryController {
      * @return 删除结果，无业务数据
      */
     @DeleteMapping("/{categoryId}")
-    public Result<Void> deleteCategory(@PathVariable Long categoryId) {
-        categoryService.deleteCategory(categoryId);
-        return Result.success("删除成功", null);
+    public Result<String> deleteCategory(@PathVariable Long categoryId) {
+        String deleteMessage = categoryService.deleteCategory(categoryId);
+        return Result.success(deleteMessage, null);
     }
 }

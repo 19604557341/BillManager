@@ -1,6 +1,7 @@
 package com.example.billmanager.dto.bill;
 
 import com.example.billmanager.enums.BillType;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.Data;
@@ -22,6 +23,7 @@ import java.time.LocalDate;
  * @author 白麝花生
  * @since 2026-09-14
  */
+@Schema
 @Data
 public class BillQueryDTO {
 
@@ -54,6 +56,10 @@ public class BillQueryDTO {
      * 不会抛出系统异常（500），业务层也不再需要字符串转枚举的兜底逻辑。
      * </p>
      */
+    @Schema(
+            description = "账单类型，可选",
+            requiredMode = Schema.RequiredMode.NOT_REQUIRED
+    )
     private BillType billType;
 
     /**
@@ -62,6 +68,10 @@ public class BillQueryDTO {
      * 为空时不按分类过滤。
      * </p>
      */
+    @Schema(
+            description = "分类ID，可选",
+            requiredMode = Schema.RequiredMode.NOT_REQUIRED
+    )
     private Long categoryId;
 
     /**
@@ -70,6 +80,10 @@ public class BillQueryDTO {
      * 账单日期范围的开始（含当天）；为空时不限制起始日期。
      * </p>
      */
+    @Schema(
+            description = "起始日期，可选",
+            requiredMode = Schema.RequiredMode.NOT_REQUIRED
+    )
     private LocalDate startDate;
 
     /**
@@ -78,6 +92,10 @@ public class BillQueryDTO {
      * 账单日期范围的结束（含当天）；为空时不限制截止日期。
      * </p>
      */
+    @Schema(
+            description = "截止日期，可选",
+            requiredMode = Schema.RequiredMode.NOT_REQUIRED
+    )
     private LocalDate endDate;
 
 }

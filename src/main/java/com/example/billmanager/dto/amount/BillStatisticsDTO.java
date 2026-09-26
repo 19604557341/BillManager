@@ -1,6 +1,7 @@
 package com.example.billmanager.dto.amount;
 
 import com.example.billmanager.enums.BillType;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -64,5 +65,9 @@ public class BillStatisticsDTO {
      * 按日分组时服务层会对无账单的日期补 0（见 BillStatisticsService）。
      * </p>
      */
+    @Schema(
+            description = "趋势分组方式，可选",
+            requiredMode = Schema.RequiredMode.NOT_REQUIRED
+    )
     private String groupBy = "day";
 }

@@ -8,6 +8,7 @@ import com.example.billmanager.vo.BillPageVO;
 import com.example.billmanager.vo.Result;
 import com.example.billmanager.entity.Bill;
 import com.example.billmanager.service.BillService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +42,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/bills")
 @RequiredArgsConstructor
+@Tag(name = "账单管理", description = "账单增删改查接口")
 public class BillController {
 
     /**

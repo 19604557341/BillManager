@@ -72,5 +72,7 @@ public interface CategoryService extends IService<Category> {
      *
      * @param categoryId 分类ID
      */
-    void deleteCategory(Long categoryId);
+    String deleteCategory(Long categoryId);
+
+    Category getCategoryById(String categoryId);
 }

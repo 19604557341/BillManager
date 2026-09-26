@@ -4,10 +4,12 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.example.billmanager.dto.category.CategoryCreateDTO;
 import com.example.billmanager.dto.category.CategoryUpdateDTO;
+import com.example.billmanager.entity.Bill;
 import com.example.billmanager.entity.Category;
 import com.example.billmanager.enums.CategoryStatus;
 import com.example.billmanager.enums.ErrorCode;
 import com.example.billmanager.exception.BusinessException;
+import com.example.billmanager.mapper.BillMapper;
 import com.example.billmanager.mapper.CategoryMapper;
 import com.example.billmanager.service.CategoryService;
 import org.springframework.stereotype.Service;
@@ -30,6 +32,12 @@ import java.util.Objects;
  */
 @Service
 public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> implements CategoryService {
+
+    private final BillMapper billMapper;
+
+    public CategoryServiceImpl(BillMapper billMapper) {
+        this.billMapper = billMapper;
+    }
 
     /**
      * 查询分类列表。
@@ -72,7 +80,7 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
      * </p>
      *
      * <p>
-     * 由于分类采用逻辑删除（status=0），且数据库存在唯一索引
+     * 由于分类采用逻辑删除（status 置为禁用），且数据库存在唯一索引
      * {@code uk_category_name_type (category_name, category_type)}，
      * 已禁用的同名分类仍然占用唯一索引，直接插入会违反唯一约束。
      * 因此当同名同类型分类处于禁用状态时，恢复启用该分类并更新其排序值。
@@ -173,7 +181,8 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
      * 删除分类。
      * <p>
      *     本方法采用逻辑删除方式，不直接删除数据库中的分类记录，
-     *     而是将分类状态修改为禁用状态。
+     *     若分类关联过账单则将分类状态修改为禁用状态
+     *     若分类无关联账单则将直接删除分类
      * </p>
      *
      *  <p>
@@ -183,21 +192,35 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
      * @throws BusinessException 当分类不存在时抛出业务异常
      */
     @Override
-    public void deleteCategory(Long categoryId) {
+    public String deleteCategory(Long categoryId) {
 
         // 只允许删除当前处于启用状态的分类，不存在或已禁用时均按 404 处理
-        LambdaQueryWrapper<Category> queryWrapper = new LambdaQueryWrapper<>();
+        LambdaQueryWrapper<Category> categoryQueryWrapper = new LambdaQueryWrapper<>();
 
-        queryWrapper
+        categoryQueryWrapper
                 .eq(Category::getCategoryId, categoryId)
                 .eq(Category::getStatus, CategoryStatus.ENABLED.getCode());
 
-        Category category = baseMapper.selectOne(queryWrapper);
+        Category category = baseMapper.selectOne(categoryQueryWrapper);
 
         if (category == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "分类不存在");
         }
 
+        //根据分类ID查询账单表 查看此分类是否有相关的账单
+        LambdaQueryWrapper<Bill> billQueryWrapper = new LambdaQueryWrapper<>();
+
+        billQueryWrapper.eq(Bill::getCategoryId, categoryId);
+
+        List<Bill> billList = billMapper.selectList(billQueryWrapper);
+
+        //如果没有相关账单则执行删除操作（selectList 无记录时返回空列表而非 null）
+        if (billList.isEmpty()) {
+            baseMapper.deleteById(categoryId);
+            return "删除成功";
+        }
+
+        //如果有则执行逻辑删除
         // 逻辑删除：仅将分类状态置为禁用，数据库记录保留
         Category updateCategory = new Category();
 
@@ -205,5 +228,18 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
         updateCategory.setStatus(CategoryStatus.DISABLED.getCode());
 
         baseMapper.updateById(updateCategory);
+        return "此分类下有管理账单，无法删除，已禁用。";
+    }
+
+    @Override
+    public Category getCategoryById(String categoryId) {
+
+        Category category = baseMapper.selectById(categoryId);
+
+        if (category == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "分类不存在");
+        }
+
+        return category;
     }
 }

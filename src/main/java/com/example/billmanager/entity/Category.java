@@ -20,7 +20,7 @@ import java.time.LocalDateTime;
  *
  * <p>
  * 分类通过 {@code status} 字段实现"逻辑删除"：
- * 删除分类时仅将其状态置为禁用（status=0），
+ * 删除分类时仅将其状态置为禁用（status=1），
  * 已记账的历史账单仍可正常关联到该分类。
  * </p>
  *
@@ -68,7 +68,7 @@ public class Category {
     /**
      * 分类状态。
      * <p>
-     * 1：启用；0：禁用（逻辑删除）。
+     * 0：启用；1：禁用（逻辑删除，见 {@code CategoryStatus}）。
      * </p>
      */
     private Integer status;

@@ -54,7 +54,8 @@ public interface BillMapper extends BaseMapper<Bill> {
      * 按分类分组统计日期范围内的账单总金额。
      *
      * <p>
-     * 通过 LEFT JOIN 分类表取分类名称，且只关联启用状态（{@code status = 1}）的分类：
+     * 通过 LEFT JOIN 分类表取分类名称，且只关联启用状态（{@code status = 0}，
+     * 见 {@code CategoryStatus#ENABLED}）的分类：
      * 分类被禁用或已删除时，对应账单金额仍会计入统计，但 {@code categoryName} 为 null，
      * 使用 LEFT JOIN（而非 INNER JOIN）正是为了保证这部分账单不会被丢掉。
      * 结果按总金额降序排列，便于前端直接展示分类排行。
@@ -71,7 +72,7 @@ public interface BillMapper extends BaseMapper<Bill> {
                 b.bill_type AS categoryType,
                 COALESCE(SUM(b.bill_amount), 0) AS totalAmount
             FROM bill b
-            LEFT JOIN category c on b.category_id = c.category_id AND c.status = 1
+            LEFT JOIN category c on b.category_id = c.category_id AND c.status = 0
             WHERE b.bill_date >= #{startDate}
             AND b.bill_date <= #{endDate}
             AND b.bill_type = #{billType}
