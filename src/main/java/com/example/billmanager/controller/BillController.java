@@ -61,9 +61,7 @@ public class BillController {
      * @return 账单详情
      */
     @GetMapping("/{billId}")
-    public Result<Bill> getBillById(
-            @PathVariable @NotNull(message = "账单ID不能为空") Long billId
-    ) {
+    public Result<Bill> getBillById(@PathVariable @NotNull(message = "账单ID不能为空") Long billId) {
         Bill bill = billService.getBillById(billId);
         return Result.success("查询成功", bill);
     }
@@ -125,10 +123,7 @@ public class BillController {
      * @return 修改成功后的账单信息
      */
     @PutMapping("/{billId}")
-    public Result<Bill> updateBill(
-            @PathVariable @NotNull(message = "账单ID不能为空") Long billId,
-            @Valid @RequestBody BillUpdateDTO billUpdateDTO
-    ) {
+    public Result<Bill> updateBill(@PathVariable @NotNull(message = "账单ID不能为空") Long billId, @Valid @RequestBody BillUpdateDTO billUpdateDTO) {
 
         Bill bill = billService.updateBillById(billId, billUpdateDTO);
 

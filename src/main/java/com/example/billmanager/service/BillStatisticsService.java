@@ -82,7 +82,7 @@ public class BillStatisticsService {
      * 同时把查询条件中的起止日期回写到 VO，便于前端展示统计区间。
      * </p>
      *
-     * @param billStatisticsDTO 统计查询条件（日期范围、账单类型、趋势分组方式）
+     * @param billStatisticsDTO 统计查询条件（日期范围、趋势分组方式；不再按账单类型过滤，收支一并返回）
      * @return 组装完成的统计结果 VO
      */
     public BillStatisticsVO getStatistics(BillStatisticsDTO billStatisticsDTO) {
@@ -144,7 +144,7 @@ public class BillStatisticsService {
                 .collect(Collectors.toMap(
                         TrendAmountDTO::getDate,
                         Function.identity(),
-                        (a, b) -> a
+                        (a, _) -> a
                 ));
 
         List<TrendStatisticsVO> trendStatisticsVOList = new ArrayList<>();
@@ -200,20 +200,26 @@ public class BillStatisticsService {
      * 组装分类统计列表（含占比计算）。
      *
      * <p>
-     * 占比 = 该分类总金额 ÷ 所有分类金额合计 × 100：
-     * <ul>
-     *     <li>先以 4 位小数精度做除法（四舍五入），再乘 100，
-     *     最后保留 2 位小数，避免除法无限循环小数抛
-     *     {@code ArithmeticException}；</li>
-     *     <li>合计为 0 时（查询区间内没有账单）占比直接置 0，避免除零；</li>
-     *     <li>同时生成 {@code percentageText}（如 "12.34%"），
-     *     前端可直接展示，无需再做格式化。</li>
-     * </ul>
-     * 注意：由于各分类占比分别四舍五入，合计可能不严格等于 100%（如 99.99%），
-     * 属于常见的展示精度误差。
+     * 统计已不再按账单类型过滤，收入与支出分类会混在同一结果列表中，
+     * 因此占比必须<b>按账单类型分组、各算各的分母</b>：
+     * 占比 = 该分类金额 ÷ <b>同类型</b>所有分类金额合计 × 100。
+     * 否则会把"收入分类 ÷（收入+支出合计）"这种毫无意义的比例算给前端。
      * </p>
      *
-     * @param categoryAmountDTOList 分类金额聚合查询结果，可能为 null 或空
+     * <p>
+     * 具体规则：
+     * <ul>
+     *     <li>分组维度取 {@code categoryType}（即 {@code bill_type}，取值 INCOME / EXPENSE）；</li>
+     *     <li>每组占比先以 4 位小数精度做除法（四舍五入），再乘 100，
+     *     最后保留 2 位小数，避免除法无限循环小数抛 {@code ArithmeticException}；</li>
+     *     <li>某组合计为 0 时该组占比直接置 0，避免除零；</li>
+     *     <li>同时生成 {@code percentageText}（如 "12.34%"），前端可直接展示；</li>
+     *     <li>结果整体仍按金额降序（沿用 SQL 排序，分组计算不改变条目顺序）。</li>
+     * </ul>
+     * 注意：同组内各分类占比分别四舍五入，合计可能不严格等于 100%（如 99.99%），属常见展示精度误差。
+     * </p>
+     *
+     * @param categoryAmountDTOList 分类金额聚合查询结果（收入、支出混排），可能为 null 或空
      * @return 分类统计 VO 列表（按金额降序，与 SQL 排序一致）；无数据时返回空列表
      */
     private List<CategoryStatisticsVO> buildCategoryStatistics(List<CategoryAmountDTO> categoryAmountDTOList) {
@@ -221,26 +227,39 @@ public class BillStatisticsService {
             return new ArrayList<>();
         }
 
-        // 所有分类金额合计，作为占比计算的分母
-        BigDecimal total = categoryAmountDTOList.stream()
-                .map(item -> getValue(item.getTotalAmount()))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // 按账单类型（INCOME / EXPENSE）分别求金额合计，作为各自分组的占比分母；
+        // categoryType 理论上不会为 null（取自 bill_type 列），兜底归入空串分组，防御性写法
+        Map<String, BigDecimal> totalByType = categoryAmountDTOList.stream()
+                .collect(Collectors.groupingBy(
+                        item -> item.getCategoryType() == null ? "" : item.getCategoryType(),
+                        Collectors.reducing(
+                                BigDecimal.ZERO,
+                                item -> getValue(item.getTotalAmount()),
+                                BigDecimal::add
+                        )
+                ));
 
         return categoryAmountDTOList.stream().map(item -> {
             CategoryStatisticsVO categoryStatisticsVO = new CategoryStatisticsVO();
             categoryStatisticsVO.setCategoryId(item.getCategoryId());
             categoryStatisticsVO.setCategoryName(item.getCategoryName());
             categoryStatisticsVO.setCategoryType(item.getCategoryType());
-            categoryStatisticsVO.setTotalAmount(getValue(item.getTotalAmount()));
 
-            if (total.compareTo(BigDecimal.ZERO) == 0) {
-                // 合计为 0：占比直接置 0，避免除零异常
+            BigDecimal amount = getValue(item.getTotalAmount());
+            categoryStatisticsVO.setTotalAmount(amount);
+
+            // 取"同账单类型"分组的合计作为分母，而非全部分类的总和
+            String typeKey = item.getCategoryType() == null ? "" : item.getCategoryType();
+            BigDecimal typeTotal = totalByType.getOrDefault(typeKey, BigDecimal.ZERO);
+
+            if (typeTotal.compareTo(BigDecimal.ZERO) == 0) {
+                // 该类型合计为 0：占比直接置 0，避免除零异常
                 categoryStatisticsVO.setPercentage(BigDecimal.ZERO);
                 categoryStatisticsVO.setPercentageText("0.00%");
             } else {
                 // 先除（保留 4 位小数）再乘 100，最后保留 2 位小数并四舍五入
-                BigDecimal percentage = getValue(item.getTotalAmount())
-                        .divide(total, 4, RoundingMode.HALF_UP)
+                BigDecimal percentage = amount
+                        .divide(typeTotal, 4, RoundingMode.HALF_UP)
                         .multiply(new BigDecimal("100"))
                         .setScale(2, RoundingMode.HALF_UP);
 

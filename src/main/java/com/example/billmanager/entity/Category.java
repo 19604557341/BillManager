@@ -1,10 +1,6 @@
 package com.example.billmanager.entity;
 
-import com.baomidou.mybatisplus.annotation.FieldFill;
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -71,6 +67,7 @@ public class Category {
      * 0：启用；1：禁用（逻辑删除，见 {@code CategoryStatus}）。
      * </p>
      */
+    @TableLogic
     private Integer status;
 
     /**

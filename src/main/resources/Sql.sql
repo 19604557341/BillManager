@@ -35,6 +35,8 @@ CREATE TABLE bill (
                       INDEX idx_bill_date (bill_date),
                       INDEX idx_bill_type (bill_type),
                       INDEX idx_bill_category_id (category_id),
+                      -- 统计查询恒带 deleted=0 且按 bill_date 范围扫描：等值列 deleted 在前、范围列 bill_date 在后
+                      INDEX idx_bill_deleted_date (deleted, bill_date),
                       CONSTRAINT fk_bill_category
                           FOREIGN KEY (category_id)
                               REFERENCES category(category_id)

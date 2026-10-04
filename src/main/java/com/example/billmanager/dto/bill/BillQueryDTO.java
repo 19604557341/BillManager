@@ -23,8 +23,8 @@ import java.time.LocalDate;
  * @author 白麝花生
  * @since 2026-09-14
  */
-@Schema
 @Data
+@Schema(description = "账单分页查询请求参数")
 public class BillQueryDTO {
 
     /**
@@ -34,6 +34,7 @@ public class BillQueryDTO {
      * </p>
      */
     @Min(value = 1, message = "页码必须大于等于1")
+    @Schema(description = "页码，默认第1页")
     private Integer page = 1;
 
     /**
@@ -45,6 +46,7 @@ public class BillQueryDTO {
      */
     @Min(value = 1, message = "每页数量必须大于等于1")
     @Max(value = 100, message = "每页数量不能大于100")
+    @Schema(description = "每页数量，默认10条，最大不超过100条")
     private Integer size = 10;
 
     /**
@@ -56,10 +58,7 @@ public class BillQueryDTO {
      * 不会抛出系统异常（500），业务层也不再需要字符串转枚举的兜底逻辑。
      * </p>
      */
-    @Schema(
-            description = "账单类型，可选",
-            requiredMode = Schema.RequiredMode.NOT_REQUIRED
-    )
+    @Schema(description = "账单类型，可选", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private BillType billType;
 
     /**
@@ -68,10 +67,7 @@ public class BillQueryDTO {
      * 为空时不按分类过滤。
      * </p>
      */
-    @Schema(
-            description = "分类ID，可选",
-            requiredMode = Schema.RequiredMode.NOT_REQUIRED
-    )
+    @Schema(description = "分类ID，可选", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private Long categoryId;
 
     /**
@@ -80,10 +76,7 @@ public class BillQueryDTO {
      * 账单日期范围的开始（含当天）；为空时不限制起始日期。
      * </p>
      */
-    @Schema(
-            description = "起始日期，可选",
-            requiredMode = Schema.RequiredMode.NOT_REQUIRED
-    )
+    @Schema(description = "起始日期，可选", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private LocalDate startDate;
 
     /**
@@ -92,10 +85,7 @@ public class BillQueryDTO {
      * 账单日期范围的结束（含当天）；为空时不限制截止日期。
      * </p>
      */
-    @Schema(
-            description = "截止日期，可选",
-            requiredMode = Schema.RequiredMode.NOT_REQUIRED
-    )
+    @Schema(description = "截止日期，可选", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private LocalDate endDate;
 
 }

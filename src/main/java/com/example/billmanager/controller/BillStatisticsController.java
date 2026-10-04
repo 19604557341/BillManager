@@ -23,9 +23,9 @@ import org.springframework.web.bind.annotation.RestController;
  * </p>
  *
  * <p>
- * 注意：统计条件（日期范围、账单类型、分组方式）通过 JSON 请求体传递，
- * 即 GET 请求搭配 {@code @RequestBody} 使用，
- * 要求客户端（前端 axios / ApiFox 等）支持 GET 携带请求体。
+ * 注意：统计条件（日期范围、分组方式）通过 Query String 传递，
+ * 不再包含账单类型——一次请求同时返回收支总额、结余、收支两条趋势线与全部分类，
+ * 前端按需取用，无需为"总结余"分别发送收入、支出两次请求。
  * </p>
  *
  * @author 白麝花生
@@ -57,13 +57,11 @@ public class BillStatisticsController {
      * 查询账单统计数据。
      *
      * <p>
-     * 请求参数先经过 {@code @Valid} 完成 JSR-303 基础校验
-     * （日期、账单类型必填）；{@code billType} 为枚举类型，
-     * 非法取值在 Jackson 反序列化阶段即被拦截，
-     * 由全局异常处理器统一返回 400 提示。
+     * 请求参数先经过 {@code @Valid} 完成 JSR-303 基础校验（起止日期必填）；
+     * 账单类型不再作为查询条件，收支数据一次性返回。
      * </p>
      *
-     * @param billStatisticsDTO 统计查询条件（日期范围、账单类型、趋势分组方式）
+     * @param billStatisticsDTO 统计查询条件（日期范围、趋势分组方式）
      * @return 统一响应格式包装的统计结果
      */
     @GetMapping("/statistics")

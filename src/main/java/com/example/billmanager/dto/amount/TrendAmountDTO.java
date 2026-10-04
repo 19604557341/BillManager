@@ -4,6 +4,8 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * 收支趋势查询结果。
  *
@@ -17,6 +19,7 @@ import java.math.BigDecimal;
  * @since 2026-09-25
  */
 @Data
+@Schema(description = "收支趋势查询结果")
 public class TrendAmountDTO {
 
     /**
@@ -26,6 +29,7 @@ public class TrendAmountDTO {
      * 由 SQL 中的 DATE_FORMAT 根据 groupBy 参数决定。
      * </p>
      */
+    @Schema(description = "日期分组键")
     private String date;
 
     /**
@@ -34,6 +38,7 @@ public class TrendAmountDTO {
      * SQL 中已用 COALESCE 兜底为 0。
      * </p>
      */
+    @Schema(description = "收入合计")
     private BigDecimal income;
 
     /**
@@ -42,5 +47,6 @@ public class TrendAmountDTO {
      * SQL 中已用 COALESCE 兜底为 0。
      * </p>
      */
+    @Schema(description = "支出合计")
     private BigDecimal expense;
 }

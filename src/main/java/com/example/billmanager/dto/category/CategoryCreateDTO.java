@@ -1,5 +1,6 @@
 package com.example.billmanager.dto.category;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -19,6 +20,7 @@ import lombok.Data;
  * @since 2026-09-13
  */
 @Data
+@Schema(description = "分类新增请求参数")
 public class CategoryCreateDTO {
 
     /**
@@ -31,6 +33,7 @@ public class CategoryCreateDTO {
      */
     @NotBlank(message = "分类名称不能为空")
     @Size(max = 50, message = "分类名称长度不能超过50个字符")
+    @Schema(description = "分类名称", requiredMode = Schema.RequiredMode.REQUIRED)
     private String categoryName;
 
     /**
@@ -44,6 +47,7 @@ public class CategoryCreateDTO {
      */
     @NotBlank(message = "分类类型不能为空")
     @Pattern(regexp = "INCOME|EXPENSE", message = "分类类型只能是INCOME或EXPENSE")
+    @Schema(description = "分类类型", requiredMode = Schema.RequiredMode.REQUIRED)
     private String categoryType;
 
     /**
@@ -55,5 +59,6 @@ public class CategoryCreateDTO {
      */
     @NotNull(message = "分类排序不能为空")
     @Min(value = 0, message = "分类排序不能小于0")
+    @Schema(description = "分类排序，数值越小排序越靠前", requiredMode = Schema.RequiredMode.REQUIRED)
     private Integer sort;
 }

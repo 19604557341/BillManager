@@ -1,4 +1,7 @@
 package com.example.billmanager.mapper;
 
-public class UserMapper {
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.example.billmanager.entity.User;
+
+public interface UserMapper extends BaseMapper<User> {
 }

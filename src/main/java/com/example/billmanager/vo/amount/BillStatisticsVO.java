@@ -23,7 +23,7 @@ public class BillStatisticsVO {
     /**
      * 总收入。
      * <p>
-     * 统计区间内指定账单类型的收入合计，无数据时为 0。
+     * 统计区间内全部收入账单的合计，无数据时为 0。
      * </p>
      */
     private BigDecimal totalIncome;
@@ -31,7 +31,7 @@ public class BillStatisticsVO {
     /**
      * 总支出。
      * <p>
-     * 统计区间内指定账单类型的支出合计，无数据时为 0。
+     * 统计区间内全部支出账单的合计，无数据时为 0。
      * </p>
      */
     private BigDecimal totalExpense;

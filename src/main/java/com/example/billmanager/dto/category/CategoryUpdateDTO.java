@@ -1,5 +1,6 @@
 package com.example.billmanager.dto.category;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -19,6 +20,7 @@ import lombok.Data;
  * @since 2026-09-13
  */
 @Data
+@Schema(description = "分类修改请求参数")
 public class CategoryUpdateDTO {
 
     /**
@@ -28,6 +30,7 @@ public class CategoryUpdateDTO {
      * </p>
      */
     @NotBlank(message = "分类名称不能为空")
+    @Schema(description = "分类名称", requiredMode = Schema.RequiredMode.REQUIRED)
     private String categoryName;
 
     /**
@@ -37,6 +40,7 @@ public class CategoryUpdateDTO {
      * </p>
      */
     @NotBlank(message = "分类类型不能为空")
+    @Schema(description = "分类类型", requiredMode = Schema.RequiredMode.REQUIRED)
     private String categoryType;
 
     /**
@@ -46,6 +50,7 @@ public class CategoryUpdateDTO {
      * </p>
      */
     @NotNull(message = "分类排序不能为空")
+    @Schema(description = "分类排序，数值越小排序越靠前", requiredMode = Schema.RequiredMode.REQUIRED)
     private Integer sort;
 
     /**
@@ -55,5 +60,6 @@ public class CategoryUpdateDTO {
      * </p>
      */
     @NotNull(message = "分类状态不能为空")
+    @Schema(description = "分类状态，0：启用，1：禁用", requiredMode = Schema.RequiredMode.REQUIRED)
     private Integer status;
 }

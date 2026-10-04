@@ -38,7 +38,8 @@
 - **并发竞态兜底**：删除账单时检查受影响行数，行数为 0（已被并发删除）同样返回 404，不制造「删除成功」的假象。
 - **枚举治理**：`BillType`、`CategoryStatus`、`ErrorCode` 三个枚举收敛了散落的字符串与数字魔法值；通过 `@EnumValue` + `@JsonValue` 保证数据库存储值与 JSON 报文格式在改造前后完全不变。DTO 层的 `billType` 也已收敛为枚举，非法取值在 Jackson 反序列化阶段即被拦截。
 - **统计模块聚合下推**：总额 / 分类占比 / 收支趋势均由 SQL（`SUM` + `GROUP BY` + `COALESCE`）完成聚合，Java 侧只处理 SQL 不便表达的逻辑——按日分组的**日期补零**（无账单日期补 0，保证折线图 X 轴连续）与**占比计算**（先除保留 4 位小数再乘 100，规避无限循环小数异常，合计为 0 时占比置 0 防除零）。
-- **统计不丢禁用分类的账单**：分类汇总用 `LEFT JOIN category ... AND status = 1`，分类被禁用或删除后账单金额仍计入统计，仅分类名为 null。
+- **统计不按账单类型过滤**：一次查询同时返回总收入 / 总支出 / 结余、收支两条趋势线、收入与支出的全部分类，前端按需取用即可，**无需为「总结余」分别发送收入、支出两次请求**。分类占比按 `bill_type` 分组各算各的分母（收入分类只占收入合计、支出分类只占支出合计），避免收支混算导致占比失真。
+- **统计不丢禁用分类的账单**：分类汇总用 `LEFT JOIN category ... AND status = 0`（仅关联启用分类），分类被禁用或删除后账单金额仍计入统计，仅分类名为 null。
 
 ---
 
@@ -52,7 +53,7 @@
 |------|------|------|
 | `GET` | `/api/bills/{billId}` | 查询账单详情，不存在返回 404 |
 | `GET` | `/api/bills/page` | 分页查询账单列表，支持多条件组合过滤 |
-| `GET` | `/api/bills/statistics` | 账单统计（总额 / 分类占比 / 日月趋势），条件通过 JSON 请求体传递 |
+| `GET` | `/api/bills/statistics` | 账单统计（总额 / 分类占比 / 日月趋势），条件通过 Query String 传递，收支一并返回 |
 | `POST` | `/api/bills` | 新增账单 |
 | `PUT` | `/api/bills/{billId}` | 修改账单 |
 | `DELETE` | `/api/bills/{billId}` | 删除账单（逻辑删除） |
@@ -70,16 +71,17 @@
 
 结果按「账单日期、创建时间」倒序排列。
 
-**统计查询参数**（通过 JSON 请求体传递，即 GET + `@RequestBody`，要求客户端支持 GET 携带请求体）：
+**统计查询参数**（通过 Query String 传递，可直接在浏览器 / Swagger UI 调试）：
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | `startDate` | LocalDate | ✅ | 统计开始日期（含），格式 `yyyy-MM-dd` |
 | `endDate` | LocalDate | ✅ | 统计结束日期（含），格式 `yyyy-MM-dd` |
-| `billType` | String | ✅ | `INCOME` / `EXPENSE`，非法值返回 400 |
 | `groupBy` | String | ❌ | 趋势分组方式，默认 `day` 按日；传 `month` 按月 |
 
-响应 `data` 包含：`totalIncome` / `totalExpense` / `balance`（结余，可为负）、起止日期回显、`categoryStatisticsVOList`（分类金额与占比，按金额降序）、`trendStatisticsVOList`（收支趋势，按日分组时已对无账单日期补 0）。
+> 统计**不再接受 `billType` 参数**：一次查询同时汇总收入与支出，前端按需取用。
+
+响应 `data` 包含：`totalIncome` / `totalExpense` / `balance`（结余 = 总收入 - 总支出，可为负）、起止日期回显、`categoryStatisticsVOList`（分类金额与占比，占比按账单类型分组计算，整体按金额降序，可用 `categoryType` 过滤单侧饼图）、`trendStatisticsVOList`（收支两条趋势线，按日分组时已对无账单日期补 0）。
 
 ### 分类 `/api/categories`
 
@@ -190,18 +192,10 @@ Content-Type: application/json
 GET /api/bills/page?page=1&size=10&billType=EXPENSE&startDate=2026-09-01&endDate=2026-09-30
 ```
 
-**统计查询**（GET 携带 JSON 请求体）
+**统计查询**（GET 携带 Query String，一次返回收支全部数据）
 
 ```http
-GET /api/bills/statistics
-Content-Type: application/json
-
-{
-  "startDate": "2026-09-01",
-  "endDate": "2026-09-30",
-  "billType": "EXPENSE",
-  "groupBy": "day"
-}
+GET /api/bills/statistics?startDate=2026-09-01&endDate=2026-09-30&groupBy=day
 ```
 
 ---
@@ -235,7 +229,7 @@ Content-Type: application/json
 | `bill_date` | DATE | 账单日期 |
 | `deleted` | TINYINT | 逻辑删除：0 正常 / 1 已删除 |
 
-索引：`idx_bill_date`、`idx_bill_type`、`idx_bill_category_id`。
+索引：`idx_bill_date`、`idx_bill_type`、`idx_bill_category_id`、`idx_bill_deleted_date (deleted, bill_date)`（统计查询恒带 `deleted = 0` 且按 `bill_date` 范围扫描，等值列在前、范围列在后）。
 
 脚本内预置 **15 个支出分类**（餐饮、娱乐、出行、购物、住房……）与 **7 个收入分类**（工资、奖金、兼职、投资收益……），开箱即可记账。
 
@@ -322,7 +316,7 @@ src/main/java/com/example/billmanager/
 - **自动化测试严重不足**：目前仅有一个 `contextLoads()` 上下文加载测试。由于 HikariCP 懒初始化，该测试**不会真正建立数据库连接**，因此它通过并不代表数据源配置正确，也未覆盖任何业务逻辑。补齐 Service / Controller 层测试是当前优先级最高的工程化任务。
 - **全局异常处理未完全兜底**：`HttpMessageNotReadableException`（请求体解析失败，如枚举非法值）已于 2026-09-25 覆盖，但 `Exception`、`MissingServletRequestParameterException` 等仍未兜底，异常堆栈有直接暴露给前端的风险。
 - **枚举治理未完全收敛**：`Bill` 实体、`BillPageVO` 与三个账单 DTO 已使用 `BillType` 枚举（原 `parseBillType()` 兜底转换已删除），但 `Category.categoryType` 与分类 DTO 仍为 `String`。
-- **统计接口参数校验不完整**：未校验 `startDate <= endDate`（起止倒置时返回全 0 而非报错），`groupBy` 无取值白名单；另 GET + `@RequestBody` 的组合要求客户端支持 GET 携带请求体。
+- **统计接口参数校验不完整**：未校验 `startDate <= endDate`（起止倒置时返回全 0 而非报错），`groupBy` 无取值白名单（非 `month` 一律按日处理）。
 - **分页 VO 手动逐字段拷贝**：`BillServiceImpl` 中账单实体到 `BillPageVO` 的映射为手写赋值，后续可引入 MapStruct 简化。
 - **生产环境需关闭调试配置**：`mybatis-plus.configuration.log-impl: StdOutImpl`（SQL 控制台日志）与 devtools 热重启应在生产 profile 中关闭。
 

@@ -4,12 +4,14 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * 分类金额汇总查询结果。
  *
  * <p>
  * 承接 {@code BillMapper#selectCategoryTotalAmounrList} 聚合查询的一行结果：
- * 统计日期范围内、指定账单类型下，按分类分组的总金额。
+ * 统计日期范围内，按分类与账单类型分组的总金额（收入、支出分类混排在同一次结果中）。
  * 仅用于 Mapper 到服务层的数据传递，不直接返回给前端。
  * </p>
  *
@@ -17,11 +19,13 @@ import java.math.BigDecimal;
  * @since 2026-09-25
  */
 @Data
+@Schema(description = "分类金额汇总查询结果")
 public class CategoryAmountDTO {
 
     /**
      * 分类ID。
      */
+    @Schema(description = "分类ID")
     private Long categoryId;
 
     /**
@@ -31,15 +35,17 @@ public class CategoryAmountDTO {
      * 分类被禁用或已删除时为 null，但对应账单金额仍会计入统计。
      * </p>
      */
+    @Schema(description = "分类名称")
     private String categoryName;
 
     /**
      * 分类类型（INCOME / EXPENSE）。
      * <p>
-     * SQL 中直接取账单表的 {@code bill_type} 列，
-     * 与查询条件中的账单类型一致。
+     * SQL 中直接取账单表的 {@code bill_type} 列；
+     * 服务层按此字段分组，分别计算收入、支出各自的分类占比。
      * </p>
      */
+    @Schema(description = "分类类型")
     private String categoryType;
 
     /**
@@ -48,5 +54,6 @@ public class CategoryAmountDTO {
      * SQL 中已用 COALESCE 兜底为 0。
      * </p>
      */
+    @Schema(description = "账单总金额")
     private BigDecimal totalAmount;
 }

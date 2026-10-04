@@ -35,7 +35,8 @@ public class CategoryStatisticsVO {
     /**
      * 分类类型（INCOME / EXPENSE）。
      * <p>
-     * 与统计查询条件中的账单类型一致。
+     * 占比按同类型分组计算：某收入分类的占比是它占全部收入分类合计的比例，
+     * 前端可按此字段过滤出单侧饼图。
      * </p>
      */
     private String categoryType;

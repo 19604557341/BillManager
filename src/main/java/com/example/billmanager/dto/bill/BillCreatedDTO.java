@@ -1,11 +1,11 @@
 package com.example.billmanager.dto.bill;
 
 import com.example.billmanager.enums.BillType;
+
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -30,6 +30,7 @@ import java.time.LocalDate;
  * @since 2026-09-23
  */
 @Data
+@Schema(description = "账单新增请求参数")
 public class BillCreatedDTO {
 
     /**
@@ -42,6 +43,7 @@ public class BillCreatedDTO {
     @NotNull(message = "账单金额不能为空")
     @DecimalMin(value = "0.01", message = "账单金额必须大于0")
     @Digits(integer = 13, fraction = 2, message = "账单金额整数部分最多13位，小数部分最多2位")
+    @Schema(description = "账单金额", requiredMode = Schema.RequiredMode.REQUIRED)
     private BigDecimal billAmount;
 
     /**
@@ -59,7 +61,7 @@ public class BillCreatedDTO {
      * </p>
      */
     @NotNull(message = "账单类型不能为空")
-//    @Pattern(regexp = "INCOME|EXPENSE", message = "账单类型只能是INCOME或EXPENSE")
+    @Schema(description = "账单类型", requiredMode = Schema.RequiredMode.REQUIRED)
     private BillType billType;
 
     /**
@@ -70,6 +72,7 @@ public class BillCreatedDTO {
      * </p>
      */
     @NotNull(message = "分类ID不能为空")
+    @Schema(description = "分类ID", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long categoryId;
 
     /**
@@ -79,6 +82,7 @@ public class BillCreatedDTO {
      * </p>
      */
     @Size(max = 500, message = "备注长度不能超过500个字符")
+    @Schema(description = "备注", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private String remark;
 
     /**
@@ -88,5 +92,6 @@ public class BillCreatedDTO {
      * </p>
      */
     @NotNull(message = "账单日期不能为空")
+    @Schema(description = "账单日期", requiredMode = Schema.RequiredMode.REQUIRED)
     private LocalDate billDate;
 }
